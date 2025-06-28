@@ -8,7 +8,28 @@ version = "0.1.0"
 description = "AI Powered Commit Message Normalization Tool"
 license = {text = "AGPL-3.0"}
 readme = "README.md"
-requires-python = ">=3.12.10"
+requires-python = ">=3.8"
+authors = [
+    {name = "yumuzhihan", email = "1573252900@qq.com"}
+]
+maintainers = [
+    {name = "yumuzhihan", email = "1573252900@qq.com"}
+]
+keywords = ["ai", "commit", "git", "cli", "normalization"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Utilities",
+]
 dependencies = [
     "click>=8.2.1",
     "openai>=1.91.0",
@@ -16,5 +37,31 @@ dependencies = [
     "pydantic-settings>=2.10.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yumuzhihan/cmai"
+Repository = "https://github.com/yumuzhihan/cmai"
+Documentation = "https://github.com/yumuzhihan/cmai#readme"
+"Bug Tracker" = "https://github.com/yumuzhihan/cmai/issues"
+
 [project.scripts]
 cmai = "cmai.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cmai*"]
+exclude = ["tests*"]
+
+[dependency-groups]
+dev = [
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
+]
