@@ -1,7 +1,20 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "cmai"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI Powered Commit Message Normalization Tool"
+license = {text = "AGPL-3.0"}
 readme = "README.md"
 requires-python = ">=3.12.10"
-dependencies = []
+dependencies = [
+    "click>=8.2.1",
+    "openai>=1.91.0",
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.10.0",
+]
+
+[project.scripts]
+cmai = "cmai.main:main"
