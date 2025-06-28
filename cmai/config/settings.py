@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     PROMPT_TEMPLATE: str = (
         "请你根据用户的描述{{user_input}}，生成一个规范化的commit信息。请确保信息简洁明了，符合常规的commit规范。\n"
         + "修改的信息包括：{{diff_content}}。你的回复应该只包含规范化的commit信息，不需要其他内容。\n"
-        + "请用英文回答，不要包含任何其他语言或注释。\n"
+        + "请用英文回答，不要包含任何其他语言或注释。例如： feat: implement user authentication\n"
     )
 
     class Config:
