@@ -16,7 +16,7 @@ async def normalize_commit_async(
     if config:
         settings.load_from_env(config)
 
-    logger.info(f"Using configuration: {settings.model_dump_json(indent=2)}")
+    logger.debug(f"Using configuration: {settings.model_dump_json(indent=2)}")
     logger.info(f"Normalizing commit message: {message}")
 
     normalizer = Normalizer()
