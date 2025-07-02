@@ -1,7 +1,7 @@
 # CMAI - AI-Powered Commit Message Normalizer
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 CMAI is an intelligent command-line tool that leverages AI to transform informal or colloquial commit messages into standardized, professional Git commit messages. It analyzes your staged changes and uses advanced language models to generate clear, concise, and conventional commit messages.
 

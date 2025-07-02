@@ -3,8 +3,8 @@ name: Build, Release and Publish
 on:
   push:
     tags:
-      - 'v*'  # 触发条件：推送 v 开头的标签
-  workflow_dispatch:  # 允许手动触发
+      - "v*" # 触发条件：推送 v 开头的标签
+  workflow_dispatch: # 允许手动触发
 
 jobs:
   # 第一步：在所有 Python 版本上测试构建
@@ -13,168 +13,181 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
       fail-fast: false
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-        allow-prereleases: true
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
+      - name: Display Python version
+        run: python --version
 
-    - name: Display versions
-      run: |
-        python --version
-        uv --version
+      - name: Upgrade pip and install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build wheel setuptools
 
-    - name: Install dependencies
-      run: |
-        # 使用 --no-sync 如果只想构建，不需要安装依赖
-        # 或者使用 uv pip install 来安装构建依赖
-        echo "Installing build dependencies..."
-        if [ -f "pyproject.toml" ]; then
-          # 检查是否有 dependencies 或 dev-dependencies
-          if grep -q "dependencies" pyproject.toml; then
-            uv sync --all-extras --dev
-          else
-            echo "No dependencies found, skipping sync"
-          fi
-        fi
+      - name: Install package dependencies
+        run: |
+          # 安装包及其依赖
+          pip install .
 
-    - name: Run tests (if any)
-      run: |
-        # 如果有测试，取消注释下面的行
-        # uv run pytest tests/ -v
-        echo "No tests configured yet"
+      - name: Run tests (if any)
+        run: |
+          # 如果有测试，取消注释下面的行
+          # python -m pytest tests/ -v
+          echo "No tests configured yet"
 
-    - name: Test build
-      run: |
-        uv build
-        ls -la dist/
+      - name: Test build
+        run: |
+          python -m build
+          ls -la dist/
 
   # 第二步：正式构建和发布
   build-and-publish:
     name: Build and Publish Package
     needs: test-build
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # 获取所有历史，以便生成更好的 changelog
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 获取所有历史，以便生成更好的 changelog
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'  # 使用稳定版本进行发布
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12" # 使用稳定版本进行发布
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
+      - name: Upgrade pip and install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build wheel setuptools twine
 
-    - name: Get version from tag
-      id: get_version
-      run: |
-        echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      - name: Get version from tag
+        id: get_version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-    - name: Verify version matches pyproject.toml
-      run: |
-        PROJECT_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
-        TAG_VERSION="${{ steps.get_version.outputs.VERSION }}"
-        if [ "$PROJECT_VERSION" != "$TAG_VERSION" ]; then
-          echo "Error: Tag version ($TAG_VERSION) doesn't match pyproject.toml version ($PROJECT_VERSION)"
-          exit 1
-        fi
-        echo "Version check passed: $PROJECT_VERSION"
+      - name: Verify version matches pyproject.toml
+        run: |
+          # 安装 tomli 用于 Python < 3.11
+          pip install tomli
+          PROJECT_VERSION=$(python -c "
+          try:
+              import tomllib
+          except ImportError:
+              import tomli as tomllib
+          with open('pyproject.toml', 'rb') as f:
+              data = tomllib.load(f)
+              print(data['project']['version'])
+          ")
+          TAG_VERSION="${{ steps.get_version.outputs.VERSION }}"
+          if [ "$PROJECT_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) doesn't match pyproject.toml version ($PROJECT_VERSION)"
+            exit 1
+          fi
+          echo "Version check passed: $PROJECT_VERSION"
 
-    - name: Build package
-      run: |
-        uv build
-        ls -la dist/
-        echo "Built packages:"
-        echo "---------------"
-        ls -1 dist/
+      - name: Build package
+        run: |
+          python -m build
+          ls -la dist/
+          echo "Built packages:"
+          echo "---------------"
+          ls -1 dist/
 
-    - name: Check build output
-      run: |
-        # 安装 wheel 来测试
-        pip install dist/*.whl
-        python -c "import cmai; print(f'Successfully imported cmai')"
-        pip show cmai
+      - name: Check build output
+        run: |
+          # 安装 wheel 来测试
+          pip install dist/*.whl
+          python -c "import cmai; print(f'Successfully imported cmai')"
+          pip show cmai
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-packages
-        path: dist/
-        retention-days: 30
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-packages
+          path: dist/
+          retention-days: 30
 
-    # 发布到 PyPI
-    - name: Publish to PyPI
-      if: "!contains(github.event.head_commit.message, '[skip-pypi]')"
-      env:
-        UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-      run: |
-        echo "Publishing to PyPI..."
-        uv publish
-        echo "Package published to PyPI"
-        echo "Install with: pip install cmai==${{ steps.get_version.outputs.VERSION }}"
+      # 检查分发包
+      - name: Check distribution
+        run: |
+          twine check dist/*
 
-    # 生成 Release Notes
-    - name: Generate Release Notes
-      id: release_notes
-      run: |
-        # 获取上一个标签
-        PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${{ steps.get_version.outputs.TAG }}^ 2>/dev/null || echo "")
-        
-        # 生成简单的 changelog
-        echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
-        echo "## What's Changed" >> $GITHUB_OUTPUT
-        
-        if [ -n "$PREVIOUS_TAG" ]; then
+      # 发布到 PyPI
+      - name: Publish to PyPI
+        if: "!contains(github.event.head_commit.message, '[skip-pypi]')"
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          echo "Publishing to PyPI..."
+          twine upload dist/*
+          echo "Package published to PyPI"
+          echo "Install with: pip install cmai==${{ steps.get_version.outputs.VERSION }}"
+
+      # 生成 Release Notes
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          # 获取上一个标签
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${{ steps.get_version.outputs.TAG }}^ 2>/dev/null || echo "")
+
+          # 生成简单的 changelog
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "## What's Changed" >> $GITHUB_OUTPUT
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "" >> $GITHUB_OUTPUT
+            echo "### Commits since $PREVIOUS_TAG" >> $GITHUB_OUTPUT
+            git log --pretty=format:"- %s (%an)" $PREVIOUS_TAG..${{ steps.get_version.outputs.TAG }} >> $GITHUB_OUTPUT
+          else
+            echo "" >> $GITHUB_OUTPUT
+            echo "Initial release 🎉" >> $GITHUB_OUTPUT
+          fi
+
           echo "" >> $GITHUB_OUTPUT
-          echo "### Commits since $PREVIOUS_TAG" >> $GITHUB_OUTPUT
-          git log --pretty=format:"- %s (%an)" $PREVIOUS_TAG..${{ steps.get_version.outputs.TAG }} >> $GITHUB_OUTPUT
-        else
           echo "" >> $GITHUB_OUTPUT
-          echo "Initial release 🎉" >> $GITHUB_OUTPUT
-        fi
-        
-        echo "" >> $GITHUB_OUTPUT
-        echo "" >> $GITHUB_OUTPUT
-        echo "## Installation" >> $GITHUB_OUTPUT
-        echo "" >> $GITHUB_OUTPUT
-        echo "\`\`\`bash" >> $GITHUB_OUTPUT
-        echo "pip install cmai==${{ steps.get_version.outputs.VERSION }}" >> $GITHUB_OUTPUT
-        echo "\`\`\`" >> $GITHUB_OUTPUT
-        echo "" >> $GITHUB_OUTPUT
-        echo "## Full Changelog" >> $GITHUB_OUTPUT
-        if [ -n "$PREVIOUS_TAG" ]; then
-          echo "https://github.com/${{ github.repository }}/compare/$PREVIOUS_TAG...${{ steps.get_version.outputs.TAG }}" >> $GITHUB_OUTPUT
-        else
-          echo "https://github.com/${{ github.repository }}/commits/${{ steps.get_version.outputs.TAG }}" >> $GITHUB_OUTPUT
-        fi
-        echo "EOF" >> $GITHUB_OUTPUT
+          echo "## Installation" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "\`\`\`bash" >> $GITHUB_OUTPUT
+          echo "pip install cmai==${{ steps.get_version.outputs.VERSION }}" >> $GITHUB_OUTPUT
+          echo "\`\`\`" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "## Supported Python Versions" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "This release has been tested with Python 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, and 3.14." >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "## Full Changelog" >> $GITHUB_OUTPUT
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "https://github.com/${{ github.repository }}/compare/$PREVIOUS_TAG...${{ steps.get_version.outputs.TAG }}" >> $GITHUB_OUTPUT
+          else
+            echo "https://github.com/${{ github.repository }}/commits/${{ steps.get_version.outputs.TAG }}" >> $GITHUB_OUTPUT
+          fi
+          echo "EOF" >> $GITHUB_OUTPUT
 
-    # 创建 GitHub Release
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      with:
-        name: Release ${{ steps.get_version.outputs.VERSION }}
-        tag_name: ${{ steps.get_version.outputs.TAG }}
-        body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
-        files: dist/*
-        draft: false
-        prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'rc') || contains(steps.get_version.outputs.VERSION, 'beta') || contains(steps.get_version.outputs.VERSION, 'alpha') }}
-        generate_release_notes: true  # GitHub 自动生成的 release notes 会追加到我们的内容后面
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 创建 GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          tag_name: ${{ steps.get_version.outputs.TAG }}
+          body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          files: dist/*
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'rc') || contains(steps.get_version.outputs.VERSION, 'beta') || contains(steps.get_version.outputs.VERSION, 'alpha') }}
+          generate_release_notes: true # GitHub 自动生成的 release notes 会追加到我们的内容后面
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # 第三步：验证发布
   verify-release:
@@ -182,23 +195,23 @@ jobs:
     needs: build-and-publish
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip-pypi]')"
-    
+
     steps:
-    - name: Wait for PyPI to update
-      run: sleep 60  # 等待 PyPI 索引更新
+      - name: Wait for PyPI to update
+        run: sleep 60 # 等待 PyPI 索引更新
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-    - name: Get version
-      id: get_version
-      run: |
-        echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Get version
+        id: get_version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-    - name: Verify installation from PyPI
-      run: |
-        python -m pip install cmai==${{ steps.get_version.outputs.VERSION }}
-        python -c "import cmai; print(f'Successfully installed and imported cmai')"
-        pip show cmai
+      - name: Verify installation from PyPI
+        run: |
+          python -m pip install cmai==${{ steps.get_version.outputs.VERSION }}
+          python -c "import cmai; print(f'Successfully installed and imported cmai')"
+          pip show cmai
