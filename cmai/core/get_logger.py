@@ -1,4 +1,5 @@
 import logging
+import sys
 from logging import Logger
 from pathlib import Path
 
@@ -8,12 +9,14 @@ from cmai.config.settings import settings
 class LoggerFactory:
     _instance: "LoggerFactory"
     _loggers: dict[str, Logger]
+    _stream_loggers: dict[str, Logger]
     _log_file: Path
 
     def __new__(cls, *args, **kwargs) -> "LoggerFactory":
         if not hasattr(cls, "_instance"):
             cls._instance = super(LoggerFactory, cls).__new__(cls, *args, **kwargs)
             cls._loggers = {}
+            cls._stream_loggers = {}
             if not settings.LOG_FILE_PATH:
                 log_file_path = Path.home() / ".logs" / "cmai" / "cmai.log"
             elif Path.exists(Path(settings.LOG_FILE_PATH)):
@@ -50,3 +53,31 @@ class LoggerFactory:
             self._loggers[name] = logger
 
         return self._loggers[name]
+
+    def get_stream_logger(self, name: str, level=logging.INFO) -> Logger:
+        """获取自定义流处理器的日志记录器"""
+        if name in self._stream_loggers:
+            return self._stream_loggers[name]
+
+        logger = self.get_logger(name)
+        logger.setLevel(level)
+        logger.handlers.clear()
+
+        stream_handler = StreamHandler(sys.stdout)
+        stream_handler.setFormatter(logging.Formatter("%(message)s"))
+        logger.addHandler(stream_handler)
+        logger.propagate = False
+
+        self._stream_loggers[name] = logger
+
+        return logger
+
+
+class StreamHandler(logging.StreamHandler):
+    """自定义流处理器，用于实时输出"""
+
+    def emit(self, record):
+        msg = self.format(record)
+        stream = self.stream
+        stream.write(msg)
+        stream.flush()
