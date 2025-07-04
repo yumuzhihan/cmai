@@ -165,7 +165,7 @@ jobs:
           echo "" >> $GITHUB_OUTPUT
           echo "## Supported Python Versions" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
-          echo "This release has been tested with Python 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, and 3.14." >> $GITHUB_OUTPUT
+          echo "This release has been tested with Python 3.10, 3.11, 3.12 and 3.13." >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "## Full Changelog" >> $GITHUB_OUTPUT
           if [ -n "$PREVIOUS_TAG" ]; then
