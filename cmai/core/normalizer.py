@@ -2,7 +2,7 @@ from typing import Optional
 
 from cmai.utils.git_staged_analyzer import GitStagedAnalyzer
 from cmai.providers.base import BaseAIClient, AIResponse
-from cmai.providers.bailian_provider import BailianProvider
+from cmai.providers.openai_provider import BailianProvider
 
 
 class Normalizer:

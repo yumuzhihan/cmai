@@ -18,21 +18,18 @@ class BailianProvider(BaseAIClient):
         **kwargs,
     ) -> None:
         """
-        初始化百炼AI客户端
+        初始化 openai 兼容类客户端
 
         Args:
             api_key (str): API密钥，用于认证请求，默认从环境变量中获取。
             model (str, optional): 使用的模型名称，默认为"qwen-turbo-latest"。
-            **kwargs: 其他可选参数，具体取决于百炼AI的API配置。
+            **kwargs: 其他可选参数，具体取决于不同的API配置。
         """
         super().__init__(api_key=api_key, model=model, **kwargs)
         self.logger = LoggerFactory().get_logger("BailianProvider")
         self.stream_logger = LoggerFactory().get_stream_logger("BailianProviderStream")
 
-        # 尝试从环境变量或配置文件中获取API Key
-        if not self.api_key:
-            env_api_key = os.getenv("DASHSCOPE_API_KEY")
-            self.api_key = env_api_key if env_api_key else settings.API_KEY
+        self.api_key = api_key or settings.API_KEY or os.getenv("CMAI_API_KEY")
 
         # 验证API Key是否存在
         if not self.api_key:
@@ -51,6 +48,8 @@ class BailianProvider(BaseAIClient):
         self.model = model
 
         self.client = OpenAI(api_key=self.api_key, base_url=base_url, **kwargs)
+
+        self.provider = "unknown" if not settings.PROVIDER else settings.PROVIDER
 
     def validate_config(self) -> bool:
         return bool(self.api_key)
