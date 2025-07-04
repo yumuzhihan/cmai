@@ -8,7 +8,7 @@ from cmai.providers.base import BaseAIClient, AIResponse
 from cmai.core.get_logger import LoggerFactory
 
 
-class BailianProvider(BaseAIClient):
+class OpenaiProvider(BaseAIClient):
     """百炼AI客户端实现"""
 
     def __init__(

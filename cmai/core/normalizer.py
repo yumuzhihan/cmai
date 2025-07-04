@@ -2,7 +2,7 @@ from typing import Optional
 
 from cmai.utils.git_staged_analyzer import GitStagedAnalyzer
 from cmai.providers.base import BaseAIClient, AIResponse
-from cmai.providers.openai_provider import BailianProvider
+from cmai.providers.provider_factory import create_provider
 
 
 class Normalizer:
@@ -10,11 +10,7 @@ class Normalizer:
         pass
 
     async def normalize_commit(
-        self,
-        user_input: str,
-        prompt_template: str,
-        repo_path: Optional[str] = None,
-        provider: BaseAIClient = BailianProvider(),
+        self, user_input: str, prompt_template: str, repo_path: Optional[str] = None
     ) -> AIResponse:
         git_analyzer = GitStagedAnalyzer(repo_path=repo_path)
         cached_diff = git_analyzer.get_cached_diff()
@@ -26,6 +22,8 @@ class Normalizer:
         prompt = prompt_template.replace("{user_input}", user_input).replace(
             "{diff_content}", diff_content
         )
+
+        provider = create_provider()
 
         response = await provider.normalize_commit(prompt)
 

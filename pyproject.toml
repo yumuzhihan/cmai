@@ -30,6 +30,7 @@ classifiers = [
 ]
 dependencies = [
     "click>=8.2.1",
+    "ollama>=0.5.1",
     "openai>=1.91.0",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.0",

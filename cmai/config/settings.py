@@ -19,7 +19,9 @@ class Settings(BaseSettings):
     PROVIDER: str = "openai"
     API_BASE: str = "https://api.openai.com/v1"
     API_KEY: str = ""
-    MODEL: str = "gpt-3.5-turbo"
+    MODEL: str | None = None
+
+    OLLAMA_HOST: Optional[str] = None
 
     PROMPT_TEMPLATE: str = (
         "请你根据用户的描述{{user_input}}，生成一个规范化的commit信息。请确保信息简洁明了，符合常规的commit规范。\n"
