@@ -1,5 +1,6 @@
 import asyncio
 from typing import Optional
+import time
 
 import click
 
@@ -37,12 +38,18 @@ async def normalize_commit_async(
 def main(message: str, config: str, repo: str):
     """将口语化的commit信息规范化"""
     try:
+        start_time = time.time()
         result = asyncio.run(normalize_commit_async(message, config, repo))
+        end_time = time.time()
+        elapsed_time = end_time - start_time
         content = result.content
         token_usage = result.tokens_used
 
         click.echo(click.style(f"Commit message: {content}", fg="green"))
         click.echo(click.style(f"Tokens used: {token_usage}", fg="blue"))
+        click.echo(
+            click.style(f"Elapsed time: {elapsed_time:.2f} seconds", fg="yellow")
+        )
     except Exception as e:
         raise click.ClickException(str(e))
 
