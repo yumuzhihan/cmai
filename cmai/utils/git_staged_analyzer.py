@@ -60,5 +60,25 @@ class GitStagedAnalyzer:
             )
             return diff_result.stdout.strip()
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error getting detailed diff for {file_name}: {e}")
-            return ""
+            self.logger.warning(f"Error getting detailed diff for {file_name}: {e}")
+            self.logger.debug("Try find the change type of the file")
+            status_result = subprocess.run(
+                ["git", "status", "--porcelain", file_name],
+                cwd=self.repo_path,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            match status_result.stdout.strip()[0]:
+                case "M":
+                    self.logger.debug(f"File {file_name} is modified.")
+                    return f"{file_name} has been modified."
+                case "A":
+                    self.logger.debug(f"File {file_name} is added.")
+                    return f"{file_name} has been added."
+                case "D":
+                    self.logger.debug(f"File {file_name} is deleted.")
+                    return f"{file_name} has been deleted."
+                case _:
+                    self.logger.debug(f"File {file_name} has unknown status.")
+                    return f"{file_name} has an unknown status."
