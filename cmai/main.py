@@ -1,6 +1,7 @@
 import asyncio
 from typing import Optional
 import time
+import subprocess
 
 import click
 
@@ -50,6 +51,13 @@ def main(message: str, config: str, repo: str):
         click.echo(
             click.style(f"Elapsed time: {elapsed_time:.2f} seconds", fg="yellow")
         )
+
+        # 询问是否直接提交到 git commit
+        if click.confirm("Do you want to commit this message directly?", default=True):
+            subprocess.run(["git", "commit", "-m", content], check=True)
+            click.echo(click.style("Commit successful!", fg="green"))
+        else:
+            click.echo(click.style("Commit aborted.", fg="red"))
     except Exception as e:
         raise click.ClickException(str(e))
 
