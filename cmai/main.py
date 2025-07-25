@@ -46,6 +46,8 @@ def main(message: str, config: str, repo: str):
         content = result.content
         token_usage = result.tokens_used
 
+        # 防止输出最后没有换行
+        click.echo()
         click.echo(click.style(f"Commit message: {content}", fg="green"))
         click.echo(click.style(f"Tokens used: {token_usage}", fg="blue"))
         click.echo(
