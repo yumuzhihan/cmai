@@ -11,7 +11,10 @@ from cmai.core.normalizer import Normalizer
 
 
 async def normalize_commit_async(
-    message: str, config: Optional[str] = None, repo: Optional[str] = None
+    message: str,
+    config: Optional[str] = None,
+    repo: Optional[str] = None,
+    language: Optional[str] = None,
 ):
     logger = LoggerFactory().get_logger("CMAI")
 
@@ -24,7 +27,10 @@ async def normalize_commit_async(
     normalizer = Normalizer()
     try:
         normalized_message = await normalizer.normalize_commit(
-            user_input=message, prompt_template=settings.PROMPT_TEMPLATE, repo_path=repo
+            user_input=message,
+            prompt_template=settings.PROMPT_TEMPLATE,
+            repo_path=repo,
+            language=language,
         )
         return normalized_message
     except Exception as e:
@@ -36,11 +42,17 @@ async def normalize_commit_async(
 @click.argument("message", type=str, required=True)
 @click.option("--config", "-c", help="配置文件路径", default=None, type=str)
 @click.option("--repo", "-r", help="Git仓库路径", default=None, type=str)
-def main(message: str, config: str, repo: str):
+@click.option("--language", "-l", help="响应语言", default=None, type=str)
+def main(
+    message: str,
+    config: Optional[str] = None,
+    repo: Optional[str] = None,
+    language: Optional[str] = None,
+):
     """将口语化的commit信息规范化"""
     try:
         start_time = time.time()
-        result = asyncio.run(normalize_commit_async(message, config, repo))
+        result = asyncio.run(normalize_commit_async(message, config, repo, language))
         end_time = time.time()
         elapsed_time = end_time - start_time
         content = result.content
