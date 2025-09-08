@@ -39,6 +39,8 @@ class GitStagedAnalyzer:
                 capture_output=True,
                 text=True,
                 check=True,
+                encoding="utf-8",
+                errors="replace",
             )
             return stat_result.stdout.strip().splitlines()
         except subprocess.CalledProcessError as e:
@@ -54,6 +56,8 @@ class GitStagedAnalyzer:
                 capture_output=True,
                 text=True,
                 check=True,
+                encoding="utf-8",
+                errors="replace",
             )
             self.logger.debug(
                 f"Detailed diff for {file_name}: {diff_result.stdout.strip()}"
@@ -68,6 +72,8 @@ class GitStagedAnalyzer:
                 capture_output=True,
                 text=True,
                 check=True,
+                encoding="utf-8",
+                errors="replace",
             )
             match status_result.stdout.strip()[0]:
                 case "M":
