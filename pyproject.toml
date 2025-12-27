@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "cmai"
 version = "0.1.6"
 description = "AI Powered Commit Message Normalization Tool"
-license = { text = "AGPL-3.0" }
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "yumuzhihan", email = "1573252900@qq.com" }]
@@ -54,6 +54,12 @@ cmai = "cmai.main:main"
 where = ["."]
 include = ["cmai*"]
 exclude = ["tests*"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["CHANGELOG.md", "LICENSE"]
 
 [dependency-groups]
 dev = ["build>=1.2.2.post1", "twine>=6.1.0"]

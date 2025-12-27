@@ -135,45 +135,102 @@ jobs:
           echo "Package published to PyPI"
           echo "Install with: pip install cmai==${{ steps.get_version.outputs.VERSION }}"
 
-      # 生成 Release Notes
-      - name: Generate Release Notes
+      # 从 CHANGELOG.md 提取当前版本的 Release Notes
+      - name: Extract Changelog for Version
         id: release_notes
         run: |
-          # 获取上一个标签
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${{ steps.get_version.outputs.TAG }}^ 2>/dev/null || echo "")
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
 
-          # 生成简单的 changelog
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
-          echo "## What's Changed" >> $GITHUB_OUTPUT
+          # 使用 Python 脚本提取对应版本的 changelog
+          python3 << 'PYTHON_SCRIPT' > changelog_content.md
+          import re
+          import sys
 
-          if [ -n "$PREVIOUS_TAG" ]; then
-            echo "" >> $GITHUB_OUTPUT
-            echo "### Commits since $PREVIOUS_TAG" >> $GITHUB_OUTPUT
-            git log --pretty=format:"- %s (%an)" $PREVIOUS_TAG..${{ steps.get_version.outputs.TAG }} >> $GITHUB_OUTPUT
-          else
-            echo "" >> $GITHUB_OUTPUT
-            echo "Initial release 🎉" >> $GITHUB_OUTPUT
-          fi
+          version = "${{ steps.get_version.outputs.VERSION }}"
 
-          echo "" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "## Installation" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "\`\`\`bash" >> $GITHUB_OUTPUT
-          echo "pip install cmai==${{ steps.get_version.outputs.VERSION }}" >> $GITHUB_OUTPUT
-          echo "\`\`\`" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "## Supported Python Versions" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "This release has been tested with Python 3.10, 3.11, 3.12 and 3.13." >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "## Full Changelog" >> $GITHUB_OUTPUT
-          if [ -n "$PREVIOUS_TAG" ]; then
-            echo "https://github.com/${{ github.repository }}/compare/$PREVIOUS_TAG...${{ steps.get_version.outputs.TAG }}" >> $GITHUB_OUTPUT
-          else
-            echo "https://github.com/${{ github.repository }}/commits/${{ steps.get_version.outputs.TAG }}" >> $GITHUB_OUTPUT
-          fi
-          echo "EOF" >> $GITHUB_OUTPUT
+          try:
+              with open('CHANGELOG.md', 'r', encoding='utf-8') as f:
+                  content = f.read()
+              
+              # 匹配当前版本的章节 (支持多种格式)
+              # 例如: ## [0.2.0] 或 ## 0.2.0 或 ## v0.2.0
+              pattern = rf'^##\s+\[?v?{re.escape(version)}\]?.*?$'
+              
+              lines = content.split('\n')
+              start_idx = None
+              end_idx = None
+              
+              # 找到当前版本的开始位置
+              for i, line in enumerate(lines):
+                  if re.match(pattern, line.strip(), re.IGNORECASE):
+                      start_idx = i
+                      break
+              
+              if start_idx is None:
+                  print(f"⚠️ 未在 CHANGELOG.md 中找到版本 {version} 的记录")
+                  print(f"\n## 📦 Release {version}\n")
+                  print("此版本的详细变更记录请查看 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)")
+                  sys.exit(0)
+              
+              # 找到下一个版本标题的位置（即当前版本内容的结束位置）
+              for i in range(start_idx + 1, len(lines)):
+                  if re.match(r'^##\s+\[?v?\d+\.\d+', lines[i].strip()):
+                      end_idx = i
+                      break
+              
+              # 提取当前版本的内容
+              if end_idx:
+                  version_content = '\n'.join(lines[start_idx+1:end_idx])
+              else:
+                  version_content = '\n'.join(lines[start_idx+1:])
+              
+              # 清理内容
+              version_content = version_content.strip()
+              
+              # 输出提取的内容
+              if version_content:
+                  print(version_content)
+              else:
+                  print(f"## 📦 Release {version}\n")
+                  print("详细变更请查看 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)")
+
+          except FileNotFoundError:
+              print(f"⚠️ CHANGELOG.md 文件不存在")
+              print(f"\n## 📦 Release {version}\n")
+              print("详细变更请查看提交记录")
+          except Exception as e:
+              print(f"⚠️ 处理 CHANGELOG.md 时出错: {e}")
+              print(f"\n## 📦 Release {version}\n")
+              print("详细变更请查看提交记录")
+          PYTHON_SCRIPT
+
+          # 读取提取的 changelog 内容
+          CHANGELOG_CONTENT=$(cat changelog_content.md)
+
+          # 构建完整的 Release Notes
+          {
+            echo "RELEASE_NOTES<<EOF"
+            echo "$CHANGELOG_CONTENT"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## 📦 Installation"
+            echo ""
+            echo "\`\`\`bash"
+            echo "pip install cmai==${{ steps.get_version.outputs.VERSION }}"
+            echo "\`\`\`"
+            echo ""
+            echo "## 🐍 Supported Python Versions"
+            echo ""
+            echo "This release has been tested with Python 3.10, 3.11, 3.12 and 3.13."
+            echo ""
+            echo "## 🔗 Links"
+            echo ""
+            echo "- [📋 Full Changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)"
+            echo "- [📦 PyPI Package](https://pypi.org/project/cmai/${{ steps.get_version.outputs.VERSION }}/)"
+            echo "- [📚 Documentation](https://github.com/${{ github.repository }}#readme)"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       # 创建 GitHub Release
       - name: Create GitHub Release
@@ -185,7 +242,7 @@ jobs:
           files: dist/*
           draft: false
           prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'rc') || contains(steps.get_version.outputs.VERSION, 'beta') || contains(steps.get_version.outputs.VERSION, 'alpha') }}
-          generate_release_notes: true # GitHub 自动生成的 release notes 会追加到我们的内容后面
+          generate_release_notes: false # 禁用自动生成，完全使用我们从 CHANGELOG.md 提取的内容
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

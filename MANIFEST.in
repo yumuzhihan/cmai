@@ -1,0 +1,5 @@
+# 包含非 Python 文件到分发包中
+include CHANGELOG.md
+include LICENSE
+include README.md
+include .env.template
