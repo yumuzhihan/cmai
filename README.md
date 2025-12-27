@@ -1,6 +1,6 @@
 # CMAI - AI-Powered Commit Message Normalizer
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 CMAI is an intelligent command-line tool that leverages AI to transform informal or colloquial commit messages into standardized, professional Git commit messages. It analyzes your staged changes and uses advanced language models to generate clear, concise, and conventional commit messages.
@@ -51,7 +51,7 @@ MODEL=gpt-4o-mini
 # MODEL=qwen2.5:7b
 ```
 
-2. **Set your API key** (if using remote providers):
+1. **Set your API key** (if using remote providers):
 
 ```bash
 # For OpenAI
@@ -64,7 +64,7 @@ export DASHSCOPE_API_KEY=your_api_key
 export DEEPSEEK_API_KEY=your_api_key
 ```
 
-3. **Test the installation**:
+1. **Test the installation**:
 
 ```bash
 # Stage some changes
@@ -82,13 +82,13 @@ cmai "fixed a bug"
 git add .
 ```
 
-2. Use CMAI to generate a normalized commit message:
+1. Use CMAI to generate a normalized commit message:
 
 ```bash
 cmai "fix some bugs in user authentication"
 ```
 
-3. The tool will output a standardized commit message like:
+1. The tool will output a standardized commit message like:
 
 ```text
 Commit message: Fix authentication bugs in user login module
@@ -184,29 +184,29 @@ Different providers require different API keys:
 export OPENAI_API_KEY=your_openai_api_key
 ```
 
-2. **Bailian (Qwen)**: Set `DASHSCOPE_API_KEY` environment variable
+1. **Bailian (Qwen)**: Set `DASHSCOPE_API_KEY` environment variable
 
 ```bash
 export DASHSCOPE_API_KEY=your_dashscope_api_key
 ```
 
-3. **DeepSeek**: Set `DEEPSEEK_API_KEY` or `CMAI_API_KEY` environment variable
+1. **DeepSeek**: Set `DEEPSEEK_API_KEY` or `CMAI_API_KEY` environment variable
 
 ```bash
 export DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
 
-4. **SiliconFlow**: Set `SILICONFLOW_API_KEY` or `CMAI_API_KEY` environment variable
+1. **SiliconFlow**: Set `SILICONFLOW_API_KEY` or `CMAI_API_KEY` environment variable
 
 ```bash
 export SILICONFLOW_API_KEY=your_siliconflow_api_key
 ```
 
-5. **Ollama**: No API key required, but ensure Ollama is running locally
+1. **Ollama**: No API key required, but ensure Ollama is running locally
 
-6. **Configuration file**: Add `API_KEY=your_api_key_here` to `~/.config/cmai/settings.env`
+2. **Configuration file**: Add `API_KEY=your_api_key_here` to `~/.config/cmai/settings.env`
 
-7. **Custom config file**: Use the `--config` option to specify a different configuration file
+3. **Custom config file**: Use the `--config` option to specify a different configuration file
 
 ## 📖 Usage Examples
 
@@ -426,7 +426,7 @@ git clone https://github.com/yumuzhihan/cmai.git
 cd cmai
 ```
 
-2. Create a virtual environment:
+1. Create a virtual environment:
 
 ```bash
 uv venv
@@ -438,7 +438,7 @@ source .venv/bin/activate
 # .venv\Scripts\activate
 ```
 
-3. Install development dependencies:
+1. Install development dependencies:
 
 ```bash
 # Install all dependencies including dev dependencies
