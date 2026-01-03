@@ -66,12 +66,40 @@ def main(
             click.style(f"Elapsed time: {elapsed_time:.2f} seconds", fg="yellow")
         )
 
-        # 询问是否直接提交到 git commit
-        if click.confirm("Do you want to commit this message directly?", default=True):
-            subprocess.run(["git", "commit", "-m", content], check=True)
-            click.echo(click.style("Commit successful!", fg="green"))
-        else:
-            click.echo(click.style("Commit aborted.", fg="red"))
+        # 交互式提交确认循环
+        while True:
+            click.echo()
+            choice = click.prompt(
+                "Action ([c]ommit / [e]dit / [a]bort)",
+                default="c",
+                show_default=True,
+                type=click.Choice(["c", "e", "a"], case_sensitive=False),
+            )
+
+            if choice.lower() == "c":
+                try:
+                    subprocess.run(["git", "commit", "-m", content], check=True)
+                    click.echo(click.style("Commit successful!", fg="green"))
+                    break
+                except subprocess.CalledProcessError:
+                    click.echo(
+                        click.style(
+                            "Commit failed. Please fix the issues and try again.",
+                            fg="red",
+                        )
+                    )
+            elif choice.lower() == "e":
+                edited = click.edit(content)
+                if edited:
+                    content = edited.strip()
+                    click.echo(
+                        click.style(f"New commit message: {content}", fg="green")
+                    )
+                else:
+                    click.echo("No changes made.")
+            elif choice.lower() == "a":
+                click.echo(click.style("Commit aborted.", fg="red"))
+                break
     except Exception as e:
         raise click.ClickException(str(e))
 

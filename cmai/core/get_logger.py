@@ -6,6 +6,35 @@ from pathlib import Path
 from cmai.config.settings import settings
 
 
+class ColoredFormatter(logging.Formatter):
+    """自定义日志格式化器，用于添加颜色"""
+
+    grey = "\x1b[38;20m"
+    green = "\x1b[32;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+
+    FORMATS = {
+        logging.DEBUG: grey,
+        logging.INFO: green,
+        logging.WARNING: yellow,
+        logging.ERROR: red,
+        logging.CRITICAL: bold_red,
+    }
+
+    def format(self, record):
+        original_levelname = record.levelname
+        if record.levelno in self.FORMATS:
+            color = self.FORMATS[record.levelno]
+            record.levelname = f"{color}{record.levelname}{self.reset}"
+
+        result = super().format(record)
+        record.levelname = original_levelname
+        return result
+
+
 class LoggerFactory:
     _instance: "LoggerFactory"
     _loggers: dict[str, Logger]
@@ -39,13 +68,17 @@ class LoggerFactory:
                 settings.LOG_FORMAT, datefmt=settings.LOG_DATE_FORMAT
             )
 
+            colored_formatter = ColoredFormatter(
+                settings.LOG_FORMAT, datefmt=settings.LOG_DATE_FORMAT
+            )
+
             file_handler = logging.FileHandler(LoggerFactory._log_file, mode="a")
             file_handler.setLevel(settings.LOG_LEVEL)
             file_handler.setFormatter(formatter)
 
             stream_handler = logging.StreamHandler()
             stream_handler.setLevel(settings.LOG_LEVEL)
-            stream_handler.setFormatter(formatter)
+            stream_handler.setFormatter(colored_formatter)
 
             logger.addHandler(file_handler)
             logger.addHandler(stream_handler)

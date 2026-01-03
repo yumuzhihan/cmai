@@ -33,14 +33,14 @@ class ProviderFactory:
         """注册默认的 Provider"""
         try:
             # 注册 OpenAI 兼容的 Provider（默认）
-            from cmai.providers.openai_provider import OpenaiProvider
+            from cmai.providers.openai_provider import OpenAIProvider
 
-            self.register_provider("openai", OpenaiProvider)
-            self.register_provider("bailian", OpenaiProvider)
-            self.register_provider("qwen", OpenaiProvider)
-            self.register_provider("deepseek", OpenaiProvider)
-            self.register_provider("chatgpt", OpenaiProvider)
-            self.register_provider("siliconflow", OpenaiProvider)
+            self.register_provider("openai", OpenAIProvider)
+            self.register_provider("bailian", OpenAIProvider)
+            self.register_provider("qwen", OpenAIProvider)
+            self.register_provider("deepseek", OpenAIProvider)
+            self.register_provider("chatgpt", OpenAIProvider)
+            self.register_provider("siliconflow", OpenAIProvider)
 
             # 注册 Ollama Provider
             from cmai.providers.ollama_provider import OllamaProvider

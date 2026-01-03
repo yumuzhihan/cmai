@@ -84,7 +84,14 @@ class OllamaProvider(BaseAIClient):
         return "", content, False, True
 
     async def normalize_commit(self, prompt: str, **kwargs) -> AIResponse:
-        self.logger.debug(f"Normalizing commit with prompt: {prompt}")
+        diff_content = kwargs.pop("diff_content", None)
+        if diff_content:
+            log_prompt = prompt.replace(
+                diff_content, f"[Diff content hidden, length: {len(diff_content)}]"
+            )
+        else:
+            log_prompt = prompt
+        self.logger.debug(f"Normalizing commit with prompt: {log_prompt}")
 
         reason = ""
         response = ""

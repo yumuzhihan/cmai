@@ -8,8 +8,8 @@ from cmai.providers.base import BaseAIClient, AIResponse
 from cmai.core.get_logger import LoggerFactory
 
 
-class OpenaiProvider(BaseAIClient):
-    """百炼AI客户端实现"""
+class OpenAIProvider(BaseAIClient):
+    """OpenAI 兼容客户端实现"""
 
     def __init__(
         self,
@@ -55,7 +55,14 @@ class OpenaiProvider(BaseAIClient):
         return bool(self.api_key)
 
     async def normalize_commit(self, prompt: str, **kargs) -> AIResponse:
-        self.logger.debug(f"Normalizing commit with prompt: {prompt}")
+        diff_content = kargs.pop("diff_content", None)
+        if diff_content:
+            log_prompt = prompt.replace(
+                diff_content, f"[Diff content hidden, length: {len(diff_content)}]"
+            )
+        else:
+            log_prompt = prompt
+        self.logger.debug(f"Normalizing commit with prompt: {log_prompt}")
 
         completion = self.client.chat.completions.create(
             model=self.model or "qwen-turbo-latest",

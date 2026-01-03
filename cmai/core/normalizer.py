@@ -32,6 +32,6 @@ class Normalizer:
 
         provider = create_provider()
 
-        response = await provider.normalize_commit(prompt)
+        response = await provider.normalize_commit(prompt, diff_content=diff_content)
 
         return response

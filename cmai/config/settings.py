@@ -31,6 +31,8 @@ class Settings(BaseSettings):
         + "请用{{language}}回答，不要包含任何其他语言或注释。\n"
     )
 
+    MAX_DIFF_LENGTH: int = 8000
+
     class Config:
         """
         Configuration for Pydantic settings.

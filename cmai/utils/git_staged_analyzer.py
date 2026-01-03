@@ -3,9 +3,29 @@ from typing import List, Optional
 from pathlib import Path
 
 from cmai.core.get_logger import LoggerFactory
+from cmai.config.settings import settings
 
 
 class GitStagedAnalyzer:
+    MAX_DIFF_SIZE = settings.MAX_DIFF_LENGTH
+    IGNORED_EXTENSIONS = {
+        ".lock",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".ico",
+        ".pdf",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".pyc",
+        ".bin",
+        ".exe",
+        ".dll",
+        ".so",
+    }
+
     def __init__(self, repo_path: Optional[str] = None) -> None:
         self.logger = LoggerFactory().get_logger("GitAddLogger")
         if repo_path is None:
@@ -20,11 +40,35 @@ class GitStagedAnalyzer:
                 self.logger.info("No staged changes found.")
                 return None
             self.logger.debug(f"Staged files: {modified_files}")
+
             detailed_diffs = []
+            current_length = 0
+
             for file_name in modified_files:
                 detailed_diff = self._get_detailed_diff(file_name)
-                if detailed_diff:
-                    detailed_diffs.append(f"{file_name}:\n{detailed_diff}")
+                if not detailed_diff:
+                    continue
+
+                # Skip binary files if git reports them as such
+                if "Binary files" in detailed_diff and "differ" in detailed_diff:
+                    continue
+
+                entry = f"{file_name}:\n{detailed_diff}"
+                entry_len = len(entry)
+
+                if current_length + entry_len > self.MAX_DIFF_SIZE:
+                    self.logger.warning(
+                        "Staged changes too large, returning file list only."
+                    )
+                    summary = [
+                        f"Total staged changes exceed {self.MAX_DIFF_SIZE} characters. Modified files list:"
+                    ]
+                    summary.extend([f"- {f}" for f in modified_files])
+                    return summary
+
+                detailed_diffs.append(entry)
+                current_length += entry_len
+
             return detailed_diffs
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Error checking git status: {e}")
@@ -42,7 +86,12 @@ class GitStagedAnalyzer:
                 encoding="utf-8",
                 errors="replace",
             )
-            return stat_result.stdout.strip().splitlines()
+            files = stat_result.stdout.strip().splitlines()
+            return [
+                f
+                for f in files
+                if not any(f.endswith(ext) for ext in self.IGNORED_EXTENSIONS)
+            ]
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Error getting modified files: {e}")
             return []
