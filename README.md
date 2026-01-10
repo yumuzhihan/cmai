@@ -19,10 +19,13 @@ CMAI is an intelligent command-line tool that leverages AI to transform informal
 
 ### Installation
 
-Install CMAI using pip:
+Install CMAI using pip, or uv as recommended:
 
 ```bash
-pip install cmai
+uv tool install cmai # Just the core package, without any provider dependencies, you need to install provider-specific extras separately
+uv tool install cmai[openai] # For OpenAI-compatible APIs
+uv tool install cmai[ollama] # For Ollama local models
+uv tool install cmai[all_providers] # For all supported providers
 ```
 
 Or install from source:
@@ -55,13 +58,21 @@ MODEL=gpt-4o-mini
 
 ```bash
 # For OpenAI
-export OPENAI_API_KEY=your_api_key
+export CMAI_API_KEY=your_api_key
 
 # For Bailian
-export DASHSCOPE_API_KEY=your_api_key
+export CMAI_API_KEY=your_api_key
 
 # For DeepSeek
-export DEEPSEEK_API_KEY=your_api_key
+export CMAI_API_KEY=your_api_key
+
+# For SiliconFlow
+export CMAI_API_KEY=your_api_key
+
+# For Ollama, no API key is needed
+
+# For Zai (智谱AI)
+export CMAI_API_KEY=your_api_key
 ```
 
 1. **Test the installation**:
@@ -93,14 +104,21 @@ cmai "fix some bugs in user authentication"
 ```text
 Commit message: Fix authentication bugs in user login module
 Tokens used: 45
+Elapsed time: 38.94 seconds
+
+Action ([c]ommit / [e]dit / [a]bort) (c, e, a) [c]:
 ```
+
+You can then choose to commit, edit, or abort the operation.
+
+**Note:** If you use Zai (智谱AI) as your provider, the token usage will not be provided due to API limitations. So the output tokens usage will be displayed as `0`.
 
 ⚠️ **Important Setup Reminder**: Before using CMAI, you must configure at least two settings:
 
 - `PROVIDER`: The AI provider you want to use (e.g., `openai`, `bailian`, `ollama`)
 - `MODEL`: The specific model name (this is **required** for all providers)
 
-Without these configurations, CMAI will fail to run. See the [Configuration](#-configuration) section for details.
+Without these configurations, CMAI will fail to run. And most providers require an API key. See the [Configuration](#-configuration) section for details.
 
 ## 🔧 Configuration
 
@@ -113,6 +131,7 @@ Create or edit `~/.config/cmai/settings.env`:
 ```env
 # AI Provider Configuration
 PROVIDER=openai
+# If API_BASE is not specified, the default base URL of `openai` sdk will be used
 API_BASE=https://api.openai.com/v1
 API_KEY=your_api_key_here
 MODEL=gpt-4o-mini
@@ -123,7 +142,7 @@ MODEL=gpt-4o-mini
 # API_KEY=your_dashscope_api_key
 # MODEL=qwen-turbo-latest
 
-# For DeepSeek API
+# For DeepSeek API(Not tested yet)
 # PROVIDER=deepseek
 # API_BASE=https://api.deepseek.com/v1
 # API_KEY=your_deepseek_api_key
@@ -146,6 +165,9 @@ LOG_FILE_PATH=/path/to/logfile.log
 
 # Prompt Template (optional customization)
 PROMPT_TEMPLATE=Please generate a standardized commit message based on the user description: {user_input}. The changes include: {diff_content}. Respond only with the normalized commit message in English.
+
+# Token Usage Limit (optional)
+DIFF_LENGTH_LIMIT=10000 # Maximum length of diff content to consider, if exceeded, it will only provide a list of the modified files.
 ```
 
 ### Supported AI Providers
@@ -159,6 +181,7 @@ CMAI supports multiple AI providers through its extensible architecture:
 - **DeepSeek**: DeepSeek's AI models
 - **SiliconFlow**: SiliconFlow's AI services
 - **ChatGPT**: OpenAI ChatGPT models
+- **Zai (智谱AI)**: Zai's large language models, such as GLM series
 
 #### 2. Local Models
 
@@ -173,40 +196,23 @@ CMAI supports multiple AI providers through its extensible architecture:
 - DeepSeek: `deepseek-chat`, `deepseek-coder`
 - SiliconFlow: `Qwen/Qwen2.5-7B-Instruct`, `deepseek-ai/DeepSeek-V2.5`
 - Ollama: `qwen2.5:7b`, `llama3.1:8b`, `codellama:7b`
+- Zai: `glm-4.5-flash`, `glm-4-0520-bolt`
 
 ### API Key Setup
 
-Different providers require different API keys:
+Different providers require different API keys, and there are two ways to set them up:
 
-1. **OpenAI**: Set `OPENAI_API_KEY` or `CMAI_API_KEY` environment variable
-
-```bash
-export OPENAI_API_KEY=your_openai_api_key
-```
-
-1. **Bailian (Qwen)**: Set `DASHSCOPE_API_KEY` environment variable
+- **Environment Variable**: Set the `CMAI_API_KEY` environment variable in your shell, and use `cmai` command in the same shell session. The toll will try to extract the API key from the environment variable.
 
 ```bash
-export DASHSCOPE_API_KEY=your_dashscope_api_key
+export CMAI_API_KEY=your_api_key_here
 ```
 
-1. **DeepSeek**: Set `DEEPSEEK_API_KEY` or `CMAI_API_KEY` environment variable
+- **Configuration File**: Set the `API_KEY` in the `~/.config/cmai/settings.env` file. You can also specify the config file path using the `--config`(or `-c`) option.
 
-```bash
-export DEEPSEEK_API_KEY=your_deepseek_api_key
+```env
+API_KEY=your_api_key_here
 ```
-
-1. **SiliconFlow**: Set `SILICONFLOW_API_KEY` or `CMAI_API_KEY` environment variable
-
-```bash
-export SILICONFLOW_API_KEY=your_siliconflow_api_key
-```
-
-1. **Ollama**: No API key required, but ensure Ollama is running locally
-
-2. **Configuration file**: Add `API_KEY=your_api_key_here` to `~/.config/cmai/settings.env`
-
-3. **Custom config file**: Use the `--config` option to specify a different configuration file
 
 ## 📖 Usage Examples
 
@@ -246,9 +252,11 @@ Arguments:
   MESSAGE  The informal commit message to be normalized [required]
 
 Options:
-  -c, --config TEXT  Path to configuration file
-  -r, --repo TEXT    Git repository path
-  --help            Show this message and exit
+  -c, --config TEXT     Path to configuration file
+  -r, --repo TEXT       Git repository path
+  -l, --language TEXT   Language for the resulting commit message. It will be passed to the llm by prompt,
+                        e.g., "English", "Chinese", etc.
+  --help                Show this message and exit
 ```
 
 **Note**: Provider and model selection is configured through the configuration file or environment variables, not command-line arguments.
@@ -301,6 +309,15 @@ OLLAMA_HOST=http://localhost:11434
 MODEL=qwen2.5:7b
 ```
 
+#### Zai (智谱AI)
+
+```env
+PROVIDER=zai
+API_BASE=https://open.bigmodel.cn/api/paas/v4/
+API_KEY=your_zhipu_api_key
+MODEL=glm-4.5-flash
+```
+
 After configuring your preferred provider, simply use:
 
 ```bash
@@ -324,6 +341,7 @@ CMAI follows a modular architecture with the following components:
 - **`cmai.providers.openai_provider`**: OpenAI-compatible API implementation
 - **`cmai.providers.ollama_provider`**: Ollama local model implementation
 - **`cmai.providers.provider_factory`**: Factory for creating and managing providers
+- **`cmai.providers.zai_provider`**: Zai (智谱AI) provider implementation
 - **`cmai.providers.bailian_provider`**: Legacy Bailian provider (deprecated)
 
 ### Utilities

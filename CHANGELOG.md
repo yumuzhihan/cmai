@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.2] - 2026-01-10
+
+### 新增 (Added)
+
+- Add support for CMAI_API_KEY as a universal environment variable for all providers.
+- Add support for Zai(智谱) provider.
+
+### 变更 (Changed)
+
+- Update README.md to reflect the use of CMAI_API_KEY for all providers
+- Update README.md to reflect the addition of Zai(智谱) provider.
+- Update pyproject.toml to include new provider dependencies.
+- Separate provider-specific dependencies in README.md installation instructions.
+
+### 修复 (Fixed)
+
+- Fix some spelling errors
+
 ## [0.2.1] - 2026-01-03
 
 ### 新增 (Added)
