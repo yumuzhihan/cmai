@@ -31,6 +31,7 @@ class ProviderFactory:
 
     def _register_default_providers(self):
         """注册默认的 Provider"""
+        success_registered = False
         try:
             # 注册 OpenAI 兼容的 Provider（默认）
             from cmai.providers.openai_provider import OpenAIProvider
@@ -42,16 +43,45 @@ class ProviderFactory:
             self.register_provider("chatgpt", OpenAIProvider)
             self.register_provider("siliconflow", OpenAIProvider)
 
+            self.logger.info("OpenAI compatible providers registered successfully")
+
+            success_registered = True
+        except:
+            self.logger.debug("Failed to register OpenAI compatible providers")
+
+        try:
             # 注册 Ollama Provider
             from cmai.providers.ollama_provider import OllamaProvider
 
             self.register_provider("ollama", OllamaProvider)
             self.register_provider("local", OllamaProvider)
 
-            self.logger.info("Default providers registered successfully")
+            self.logger.info("Ollama providers registered successfully")
 
-        except ImportError as e:
-            self.logger.warning(f"Failed to import some providers: {e}")
+            success_registered = True
+        except:
+            self.logger.warning(f"Failed to register Ollama provider")
+
+        try:
+            # 注册 Zai Provider
+            from cmai.providers.zai_provider import ZhipuAiProvider
+
+            self.register_provider("zhipu", ZhipuAiProvider)
+            self.register_provider("zhipuai", ZhipuAiProvider)
+            self.register_provider("zhipu-ai", ZhipuAiProvider)
+            self.register_provider("zhipu-api", ZhipuAiProvider)
+            self.register_provider("zai", ZhipuAiProvider)
+
+            self.logger.info("Zai providers registered successfully")
+
+            success_registered = True
+        except:
+            self.logger.debug(f"Failed to register Zai provider")
+
+        if not success_registered:
+            self.logger.error(
+                "No compatible AI providers were registered. Please check your configuration."
+            )
 
     def register_provider(self, name: str, provider_class: Type[BaseAIClient]):
         """

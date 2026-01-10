@@ -26,14 +26,14 @@ class OpenAIProvider(BaseAIClient):
             **kwargs: 其他可选参数，具体取决于不同的API配置。
         """
         super().__init__(api_key=api_key, model=model, **kwargs)
-        self.logger = LoggerFactory().get_logger("OpenAiProvider")
-        self.stream_logger = LoggerFactory().get_stream_logger("OpenAiProvider")
+        self.logger = LoggerFactory().get_logger("OpenAIProvider")
+        self.stream_logger = LoggerFactory().get_stream_logger("OpenAIProvider")
 
         self.api_key = api_key or settings.API_KEY or os.getenv("CMAI_API_KEY")
 
         # 验证API Key是否存在
         if not self.api_key:
-            raise ValueError("API key is required for BailianProvider.")
+            raise ValueError("API key is required for OpenAIProvider.")
 
         # 获取 API Base
         if not settings.API_BASE:
