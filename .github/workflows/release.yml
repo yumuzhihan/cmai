@@ -33,16 +33,15 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install build wheel setuptools
 
-      - name: Install package dependencies
+      - name: Test install base package
         run: |
-          # 安装包及其依赖
           pip install .
+          python -c "import cmai; print('Base package imported successfully')"
 
-      - name: Run tests (if any)
+      - name: Test install with all providers
         run: |
-          # 如果有测试，取消注释下面的行
-          # python -m pytest tests/ -v
-          echo "No tests configured yet"
+          pip install ".[all_providers]"
+          python -c "import cmai; import openai; import ollama; import zai; print('All providers installed successfully')"
 
       - name: Test build
         run: |
@@ -111,6 +110,21 @@ jobs:
           python -c "import cmai; print(f'Successfully imported cmai')"
           pip show cmai
 
+      - name: Inspect Wheel Metadata
+        run: |
+          pip install pkginfo
+          python -c "
+          import glob
+          from pkginfo import Wheel
+          whl = glob.glob('dist/*.whl')[0]
+          metadata = Wheel(whl)
+          print(f'Extras provided: {metadata.provides_extras}')
+          expected = {'openai', 'ollama', 'zai', 'all_providers', 'dev'}
+          if not expected.issubset(set(metadata.provides_extras)):
+             print('Error: Missing extras in built wheel!')
+             exit(1)
+          "
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -118,7 +132,6 @@ jobs:
           path: dist/
           retention-days: 30
 
-      # 检查分发包
       - name: Check distribution
         run: |
           twine check dist/*
@@ -252,6 +265,10 @@ jobs:
     needs: build-and-publish
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip-pypi]')"
+    strategy:
+      fail-fast: false
+      matrix:
+        extra: ["base", "openai", "ollama", "zai", "all_providers"]
 
     steps:
       - name: Wait for PyPI to update
@@ -267,8 +284,26 @@ jobs:
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Verify installation from PyPI
+      - name: Verify Installation
         run: |
-          python -m pip install cmai==${{ steps.get_version.outputs.VERSION }}
-          python -c "import cmai; print(f'Successfully installed and imported cmai')"
-          pip show cmai
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          EXTRA="${{ matrix.extra }}"
+
+          if [ "$EXTRA" == "base" ]; then
+            PACKAGE="cmai==$VERSION"
+            CHECK_CMD="import cmai"
+          else
+            PACKAGE="cmai[$EXTRA]==$VERSION"
+            # 简单的映射检查逻辑
+            if [ "$EXTRA" == "openai" ]; then CHECK_CMD="import cmai, openai"; fi
+            if [ "$EXTRA" == "ollama" ]; then CHECK_CMD="import cmai, ollama"; fi
+            if [ "$EXTRA" == "all_providers" ]; then CHECK_CMD="import cmai, openai, ollama"; fi
+          fi
+
+          echo "Testing installation of: $PACKAGE"
+          python -m pip install "$PACKAGE"
+
+          echo "Verifying imports..."
+          python -c "$CHECK_CMD"
+
+          echo "✅ Verification successful for $EXTRA"
