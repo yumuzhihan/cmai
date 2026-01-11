@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cmai"
-version = "0.2.2"
+version = "0.2.3"
 description = "AI Powered Commit Message Normalization Tool"
 license = { text = "MIT" }
 readme = "README.md"
@@ -39,6 +39,10 @@ dev = [
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
 ]
+openai = ["openai>=1.91.0"]
+ollama = ["ollama>=0.5.1"]
+zai = ["zai-sdk>=0.2.0"]
+all_providers = ["openai>=1.91.0", "ollama>=0.5.1", "zai-sdk>=0.2.0"]
 
 
 [project.urls]
@@ -63,7 +67,3 @@ include-package-data = true
 
 [dependency-groups]
 dev = ["build>=1.2.2.post1", "twine>=6.1.0"]
-openai = ["openai>=1.91.0"]
-ollama = ["ollama>=0.5.1"]
-zai = ["zai-sdk>=0.2.0"]
-all_providers = ["openai>=1.91.0", "ollama>=0.5.1", "zai-sdk>=0.2.0"]
