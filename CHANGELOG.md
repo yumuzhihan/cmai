@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.3] - 2026-01-11
+
+### 新增 (Added)
+
+### 变更 (Changed)
+
+### 修复 (Fixed)
+
+- Move provider dependencies into dependency groups in pyproject.toml.
+
 ## [0.2.2] - 2026-01-10
 
 ### 新增 (Added)
