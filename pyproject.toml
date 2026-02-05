@@ -43,7 +43,7 @@ openai = ["openai>=1.91.0"]
 ollama = ["ollama>=0.5.1"]
 zai = ["zai-sdk>=0.2.0"]
 anthropic = ["anthropic>=0.77.1"]
-all_providers = [
+all-providers = [
     "openai>=1.91.0",
     "ollama>=0.5.1",
     "zai-sdk>=0.2.0",

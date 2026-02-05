@@ -13,9 +13,9 @@ Install via `uv` (recommended) or `pip`:
 
 ```bash
 # Install with all providers support
-uv tool install cmai[all_providers]
+uv tool install cmai[all-providers]
 # OR
-pip install cmai[all_providers]
+pip install cmai[all-providers]
 
 # For specific providers only: cmai[openai], cmai[ollama], cmai[anthropic], etc.
 ```
