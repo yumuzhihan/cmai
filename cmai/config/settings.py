@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     API_BASE: str | None = None
     API_KEY: str = ""
     MODEL: str | None = None
+    NAX_TOKEN: int = 8192
 
     OLLAMA_HOST: Optional[str] = None
 

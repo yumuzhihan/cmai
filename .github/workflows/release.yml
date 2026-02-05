@@ -268,7 +268,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        extra: ["base", "openai", "ollama", "zai", "all_providers"]
+        extra: ["base", "openai", "ollama", "zai", "anthropic", "all_providers"]
 
     steps:
       - name: Wait for PyPI to update

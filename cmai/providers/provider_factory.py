@@ -1,6 +1,5 @@
 from typing import Dict, Type, Optional, Any, Callable
 import importlib
-from abc import ABC, abstractmethod
 
 from cmai.config.settings import settings
 from cmai.core.get_logger import LoggerFactory
@@ -60,7 +59,7 @@ class ProviderFactory:
 
             success_registered = True
         except:
-            self.logger.warning(f"Failed to register Ollama provider")
+            self.logger.debug(f"Failed to register Ollama provider")
 
         try:
             # 注册 Zai Provider
@@ -77,6 +76,19 @@ class ProviderFactory:
             success_registered = True
         except:
             self.logger.debug(f"Failed to register Zai provider")
+
+        try:
+            # 注册 Anthropic Provider
+            from cmai.providers.anthropic_provider import AnthropicProvider
+
+            self.register_provider("anthropic", AnthropicProvider)
+            self.register_provider("claude", AnthropicProvider)
+
+            self.logger.info("Anthropic providers registered successfully")
+
+            success_registered = True
+        except:
+            self.logger.debug(f"Failed to register Anthropic provider")
 
         if not success_registered:
             self.logger.error(
