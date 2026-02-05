@@ -35,13 +35,20 @@ class AnthropicProvider(BaseAIClient):
         if not self.api_key:
             raise ValueError("API key is required for AnthropicProvider.")
 
+        # 获取 API Base
+        base_url = settings.API_BASE if settings.API_BASE else None
+
         # 获取 model
         if not model:
             model = settings.MODEL or "claude-3-5-sonnet-20241022"
 
         self.model = model
 
-        self.client = Anthropic(api_key=self.api_key, **kwargs)
+        # 创建 Anthropic 客户端，如果有自定义 base_url 则使用
+        if base_url:
+            self.client = Anthropic(api_key=self.api_key, base_url=base_url, **kwargs)
+        else:
+            self.client = Anthropic(api_key=self.api_key, **kwargs)
 
         self.provider = "anthropic" if not settings.PROVIDER else settings.PROVIDER
 
@@ -58,13 +65,22 @@ class AnthropicProvider(BaseAIClient):
             log_prompt = prompt
         self.logger.debug(f"Normalizing commit with prompt: {log_prompt}")
 
-        stream = self.client.messages.create(
-            model=self.model or "claude-haiku-4-5-20251001",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=settings.MAX_TOKEN,
-            stream=True,
-            thinking=settings.ENABLE_THINKING,
-        )
+        # 构建请求参数
+        create_params = {
+            "model": self.model or "claude-haiku-4-5-20251001",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": settings.MAX_TOKEN,
+            "stream": True,
+        }
+
+        # 只在启用 thinking 时才添加该参数
+        if settings.ENABLE_THINKING:
+            create_params["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": settings.THINKING_BUDGET,
+            }
+
+        stream = self.client.messages.create(**create_params)
 
         response = ""
         is_answering = False

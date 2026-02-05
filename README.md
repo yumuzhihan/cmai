@@ -17,7 +17,7 @@ uv tool install cmai[all_providers]
 # OR
 pip install cmai[all_providers]
 
-# For specific providers only: cmai[openai], cmai[ollama], etc.
+# For specific providers only: cmai[openai], cmai[ollama], cmai[anthropic], etc.
 ```
 
 ### 2. Configuration
@@ -31,15 +31,22 @@ API_KEY=your_api_key_here
 MODEL=gpt-4o-mini
 # API_BASE=... (Optional: Only needed for non-standard endpoints)
 
+# --- Anthropic (Claude) Provider Example ---
+# PROVIDER=anthropic
+# API_KEY=your_anthropic_api_key_here
+# MODEL=claude-3-5-sonnet-20241022
+# ENABLE_THINKING=true
+# THINKING_BUDGET=1024
+
 # --- Local Provider Example (Ollama) ---
 # PROVIDER=ollama
 # OLLAMA_HOST=http://localhost:11434
 # MODEL=qwen2.5:7b
 ```
 
-**Supported Providers:** openai, bailian, deepseek, siliconflow, zai (智谱), ollama.
+**Supported Providers:** openai, bailian, deepseek, siliconflow, anthropic, claude, zai (智谱), ollama.
 
-**Tip:** You can also set CMAI_API_KEY as an environment variable instead of putting it in the config file.
+**Tip:** You can also set CMAI_API_KEY or ANTHROPIC_API_KEY as environment variables instead of putting them in the config file.
 
 ### 3. Usage
 

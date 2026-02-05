@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.4] - 2026-02-05
+
+### Added
+
+- Add support for Anthropic (Claude) provider.
+- Add `THINKING_BUDGET` configuration option for Anthropic's extended thinking feature.
+- Add `MAX_TOKEN` configuration option for controlling response length.
+
+### Changed
+
+- Update provider factory to register Anthropic provider with both "anthropic" and "claude" aliases.
+
 ## [0.2.3] - 2026-01-11
 
 ### 新增 (Added)

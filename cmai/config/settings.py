@@ -20,12 +20,13 @@ class Settings(BaseSettings):
     API_BASE: str | None = None
     API_KEY: str = ""
     MODEL: str | None = None
-    NAX_TOKEN: int = 8192
+    MAX_TOKEN: int = 8192
 
     OLLAMA_HOST: Optional[str] = None
 
     RESPONSE_LANGUAGE: str = "English"
     ENABLE_THINKING: bool = True
+    THINKING_BUDGET: int = 1024  # Only For Anthropic
 
     PROMPT_TEMPLATE: str = (
         "请你根据用户的描述{{user_input}}，生成一个规范化的commit信息。请确保信息简洁明了，符合常规的commit规范。\n"
