@@ -119,7 +119,7 @@ jobs:
           whl = glob.glob('dist/*.whl')[0]
           metadata = Wheel(whl)
           print(f'Extras provided: {metadata.provides_extras}')
-          expected = {'openai', 'ollama', 'zai', 'all_providers', 'dev'}
+          expected = {'openai', 'ollama', 'zai', 'all_providers', 'anthropic' 'dev'}
           if not expected.issubset(set(metadata.provides_extras)):
              print('Error: Missing extras in built wheel!')
              exit(1)
