@@ -42,6 +42,16 @@ MODEL=gpt-4o-mini
 # PROVIDER=ollama
 # OLLAMA_HOST=http://localhost:11434
 # MODEL=qwen2.5:7b
+
+# --- Commit Specification Rules ---
+COMMIT_SPEC=conventional
+COMMIT_STRICT=true
+# COMMIT_ALLOWED_TYPES=feat,fix,docs,chore
+COMMIT_SCOPE_POLICY=optional
+COMMIT_SUBJECT_MAX_LEN=72
+COMMIT_HEADER_MAX_LEN=100
+COMMIT_SUBJECT_CASE=lower
+COMMIT_ALLOW_BANG=true
 ```
 
 **Supported Providers:** openai, bailian, deepseek, siliconflow, anthropic, claude, zai (智谱), ollama.
@@ -61,7 +71,11 @@ The tool will output a normalized message and prompt for action:
 
 - [c]ommit: Execute git commit.
 - [e]dit: Edit the message manually.
+- [r]egenerate: Ask the model to regenerate. You can provide an optional additional prompt.
 - [a]bort: Cancel.
+
+When `COMMIT_STRICT=true`, non-compliant messages cannot be committed.
+The CLI will show warnings and only allow `edit`, `regenerate`, or `abort` until the message passes validation.
 
 If a commit error occurs, an appropriate error message will be displayed and retained here. You can open a new terminal to fix these issues and then input 'c' to proceed with the commit.
 
@@ -75,6 +89,17 @@ Options:
   -r, --repo TEXT      Path to the git repository (default: current dir)
   -l, --language TEXT  Target language for the commit message (e.g., "Chinese")
 ```
+
+## ✅ Commit Specs and Formatting Preferences
+
+- `COMMIT_SPEC`: `conventional` or `angular`
+- `COMMIT_STRICT`: if `true`, block commit until message is valid
+- `COMMIT_ALLOWED_TYPES`: optional comma-separated override for allowed types
+- `COMMIT_SCOPE_POLICY`: `optional`, `required`, or `forbid`
+- `COMMIT_SUBJECT_MAX_LEN`: max subject length
+- `COMMIT_HEADER_MAX_LEN`: max full header length
+- `COMMIT_SUBJECT_CASE`: `lower`, `sentence`, or `any`
+- `COMMIT_ALLOW_BANG`: whether `!` is allowed in header
 
 ## 📦 Development
 
