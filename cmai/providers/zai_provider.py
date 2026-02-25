@@ -34,6 +34,7 @@ class ZhipuAiProvider(BaseAIClient):
         return bool(self.api_key)
 
     async def normalize_commit(self, prompt: str, **kargs) -> AIResponse:
+        silent = bool(kargs.pop("silent", False))
         diff_content = kargs.pop("diff_content", None)
         if diff_content:
             log_prompt = prompt.replace(
@@ -65,18 +66,26 @@ class ZhipuAiProvider(BaseAIClient):
                         and getattr(delta, "reasoning_content", None) is not None
                     ):
                         if not is_reasoning:
-                            self.logger.info(
-                                "Detected reasoning content...\nPlease wait..."
-                            )
+                            if not silent:
+                                self.logger.info(
+                                    "Detected reasoning content...\nPlease wait..."
+                                )
                             is_reasoning = True
-                        self.stream_logger.info(getattr(delta, "reasoning_content", ""))
+                        if not silent:
+                            self.stream_logger.info(
+                                getattr(delta, "reasoning_content", "")
+                            )
                         reason += getattr(delta, "reasoning_content", "")
                     else:
                         if not is_answering:
-                            self.stream_logger.info("\n")
+                            if not silent:
+                                self.stream_logger.info("\n")
                             self.logger.debug("Starting to answer...")
                             is_answering = True
-                        self.stream_logger.info(chunk.choices[0].delta.content or "")
+                        if not silent:
+                            self.stream_logger.info(
+                                chunk.choices[0].delta.content or ""
+                            )
                         response += chunk.choices[0].delta.content or ""
                 elif chunk.usage:
                     usage = chunk.usage.total_tokens
@@ -90,7 +99,12 @@ class ZhipuAiProvider(BaseAIClient):
             self.logger.warning("No usage information received")
             usage = 0
 
-        self.logger.info(f"Final normalized commit message: {response.strip()}")
+        if not silent:
+            self.logger.info(f"Final normalized commit message: {response.strip()}")
+        else:
+            self.logger.debug(
+                "Final normalized commit message generated in silent mode"
+            )
 
         return AIResponse(
             content=response.strip(),

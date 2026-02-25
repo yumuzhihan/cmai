@@ -13,6 +13,9 @@ class AIResponse(BaseModel):
     model: str
     provider: str
     tokens_used: Optional[int] = None
+    suggest_split: Optional[bool] = None
+    split_reason: Optional[str] = None
+    split_groups: Optional[list[str]] = None
 
 
 class BaseAIClient(ABC):

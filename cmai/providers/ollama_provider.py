@@ -84,6 +84,7 @@ class OllamaProvider(BaseAIClient):
         return "", content, False, True
 
     async def normalize_commit(self, prompt: str, **kwargs) -> AIResponse:
+        silent = bool(kwargs.pop("silent", False))
         diff_content = kwargs.pop("diff_content", None)
         if diff_content:
             log_prompt = prompt.replace(
@@ -138,31 +139,37 @@ class OllamaProvider(BaseAIClient):
                         # 处理思考内容
                         if reasoning_content and chunk_is_reasoning:
                             if not is_reasoning:
-                                self.logger.info(
-                                    "Detected reasoning content...\nPlease wait..."
-                                )
+                                if not silent:
+                                    self.logger.info(
+                                        "Detected reasoning content...\nPlease wait..."
+                                    )
                                 is_reasoning = True
                             # 只输出新的思考内容（避免重复）
-                            self.stream_logger.info(content)
+                            if not silent:
+                                self.stream_logger.info(content)
                             reason = reasoning_content
 
                         # 处理答案内容
                         if answer_content and chunk_is_answering:
                             if not is_answering:
-                                self.stream_logger.info("\n")
+                                if not silent:
+                                    self.stream_logger.info("\n")
                                 self.logger.debug("Starting to answer...")
                                 is_answering = True
-                            self.stream_logger.info(content)
+                            if not silent:
+                                self.stream_logger.info(content)
                             response = answer_content
 
                         # 如果没有检测到特殊格式，按普通内容处理
                         if not chunk_is_reasoning and not chunk_is_answering:
                             if not is_answering:
-                                self.stream_logger.info("\n")
+                                if not silent:
+                                    self.stream_logger.info("\n")
                                 self.logger.debug("Starting to answer...")
                                 is_answering = True
                                 continue
-                            self.stream_logger.info(content)
+                            if not silent:
+                                self.stream_logger.info(content)
                             response += content
 
                 # 处理完成信息和统计
@@ -207,7 +214,12 @@ class OllamaProvider(BaseAIClient):
                 response = accumulated_content
 
         final_response = response.strip()
-        self.logger.info(f"Final normalized commit message: {final_response}")
+        if not silent:
+            self.logger.info(f"Final normalized commit message: {final_response}")
+        else:
+            self.logger.debug(
+                "Final normalized commit message generated in silent mode"
+            )
 
         # 如果有思考内容，也记录下来
         if reason.strip():

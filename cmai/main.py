@@ -65,6 +65,9 @@ def main(
         elapsed_time = end_time - start_time
         content = result.content
         token_usage = result.tokens_used
+        suggest_split = result.suggest_split
+        split_reason = result.split_reason
+        split_groups = result.split_groups or []
 
         rules = resolve_commit_rules(settings)
 
@@ -75,6 +78,20 @@ def main(
         click.echo(
             click.style(f"Elapsed time: {elapsed_time:.2f} seconds", fg="yellow")
         )
+
+        if suggest_split:
+            click.echo()
+            click.echo(
+                click.style(
+                    "Suggestion: detected potentially independent staged changes. "
+                    "Consider splitting into multiple commits.",
+                    fg="yellow",
+                )
+            )
+            if split_reason:
+                click.echo(click.style(f"Reason: {split_reason}", fg="yellow"))
+            for group in split_groups:
+                click.echo(click.style(f"- {group}", fg="yellow"))
 
         # 交互式提交确认循环
         while True:
@@ -155,6 +172,9 @@ def main(
 
                 content = result.content
                 token_usage = result.tokens_used
+                suggest_split = result.suggest_split
+                split_reason = result.split_reason
+                split_groups = result.split_groups or []
 
                 click.echo()
                 click.echo(
@@ -166,6 +186,19 @@ def main(
                         f"Elapsed time: {elapsed_time:.2f} seconds", fg="yellow"
                     )
                 )
+                if suggest_split:
+                    click.echo()
+                    click.echo(
+                        click.style(
+                            "Suggestion: detected potentially independent staged changes. "
+                            "Consider splitting into multiple commits.",
+                            fg="yellow",
+                        )
+                    )
+                    if split_reason:
+                        click.echo(click.style(f"Reason: {split_reason}", fg="yellow"))
+                    for group in split_groups:
+                        click.echo(click.style(f"- {group}", fg="yellow"))
             elif choice.lower() == "a":
                 click.echo(click.style("Commit aborted.", fg="red"))
                 break
