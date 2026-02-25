@@ -87,6 +87,36 @@ class Normalizer:
 
         prompt = "\n\n".join(prompt_parts)
 
+        rules = resolve_commit_rules(settings)
+        prompt_parts = [prompt, build_commit_rules_prompt(rules)]
+
+        if previous_message:
+            prompt_parts.append(f"Previous generated message: {previous_message}")
+        if validation_errors:
+            prompt_parts.append(
+                "Validation errors from previous attempt:\n"
+                + "\n".join(f"- {error}" for error in validation_errors)
+            )
+        if additional_prompt:
+            prompt_parts.append(f"User additional prompt: {additional_prompt}")
+
+        prompt = "\n\n".join(prompt_parts)
+
+        rules = resolve_commit_rules(settings)
+        prompt_parts = [prompt, build_commit_rules_prompt(rules)]
+
+        if previous_message:
+            prompt_parts.append(f"Previous generated message: {previous_message}")
+        if validation_errors:
+            prompt_parts.append(
+                "Validation errors from previous attempt:\n"
+                + "\n".join(f"- {error}" for error in validation_errors)
+            )
+        if additional_prompt:
+            prompt_parts.append(f"User additional prompt: {additional_prompt}")
+
+        prompt = "\n\n".join(prompt_parts)
+
         try:
             response = await self._call_provider_with_retry(
                 provider,
