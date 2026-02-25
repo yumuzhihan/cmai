@@ -52,6 +52,18 @@ COMMIT_SUBJECT_MAX_LEN=72
 COMMIT_HEADER_MAX_LEN=100
 COMMIT_SUBJECT_CASE=lower
 COMMIT_ALLOW_BANG=true
+
+# --- Large Diff and Context Optimization ---
+MAX_DIFF_LENGTH=8000
+MAX_DIFF_FILE_LINES=50
+MAX_DIFF_FILES_FOR_AI=30
+ENABLE_DIFF_LOCAL_SUMMARY=true
+ENABLE_SPLIT_SUGGESTION=true
+SPLIT_CONFIDENCE_THRESHOLD=0.75
+DIFF_SUMMARY_CONCURRENCY=4
+RETRY_MAX_ATTEMPTS=3
+RETRY_BASE_DELAY_SECONDS=1.0
+RETRY_MAX_DELAY_SECONDS=8.0
 ```
 
 **Supported Providers:** openai, bailian, deepseek, siliconflow, anthropic, claude, zai (智谱), ollama.
@@ -77,6 +89,13 @@ The tool will output a normalized message and prompt for action:
 When `COMMIT_STRICT=true`, non-compliant messages cannot be committed.
 The CLI will show warnings and only allow `edit`, `regenerate`, or `abort` until the message passes validation.
 
+For very large staged diffs, CMAI now falls back to per-file truncated diff previews instead of only file names.
+When enabled, CMAI also performs file-level AI summaries and can suggest splitting unrelated staged changes into separate commits.
+During file summarization, progress lines now display only the file name (not full path).
+
+When providers hit rate limits (for example `403 RPM limit exceeded` or `429`), CMAI automatically retries with exponential backoff.
+If final commit generation still fails after retries, CMAI falls back to a local heuristic commit message instead of exiting immediately.
+
 If a commit error occurs, an appropriate error message will be displayed and retained here. You can open a new terminal to fix these issues and then input 'c' to proceed with the commit.
 
 ## 🛠 CLI Options
@@ -100,6 +119,22 @@ Options:
 - `COMMIT_HEADER_MAX_LEN`: max full header length
 - `COMMIT_SUBJECT_CASE`: `lower`, `sentence`, or `any`
 - `COMMIT_ALLOW_BANG`: whether `!` is allowed in header
+- `MAX_DIFF_LENGTH`: max characters for raw staged diff context
+- `MAX_DIFF_FILE_LINES`: per-file changed lines kept in truncated preview mode
+- `MAX_DIFF_FILES_FOR_AI`: max files included in file-level AI summarization
+- `ENABLE_DIFF_LOCAL_SUMMARY`: enable two-stage AI diff summarization
+- `ENABLE_SPLIT_SUGGESTION`: enable split-commit recommendation
+- `SPLIT_CONFIDENCE_THRESHOLD`: minimum AI confidence to show split recommendation
+- `DIFF_SUMMARY_CONCURRENCY`: concurrent file-summary requests
+- `RETRY_MAX_ATTEMPTS`: max attempts when provider hits rate limit
+- `RETRY_BASE_DELAY_SECONDS`: initial backoff delay for rate-limit retry
+- `RETRY_MAX_DELAY_SECONDS`: max backoff delay for rate-limit retry
+
+## 🔁 Retry and Fallback Behavior
+
+- CMAI retries only on likely rate-limit errors (such as `429`, `RPM limit`, `too many requests`, `limit exceeded`).
+- Backoff uses exponential delays: `base * 2^(attempt-1)`, capped by `RETRY_MAX_DELAY_SECONDS`.
+- If retries are exhausted for final commit generation, CMAI builds a local commit message that still follows your configured commit rules.
 
 ## 📦 Development
 

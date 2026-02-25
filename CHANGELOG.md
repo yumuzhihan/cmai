@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Add smart large-diff fallback that keeps per-file truncated patch previews instead of only file lists.
+- Add two-stage diff summarization flow (file-level AI summaries + aggregate summary) for better large-context prompts.
+- Add optional split-commit recommendation when staged changes appear to contain independent topics.
+- Add automatic exponential backoff retry for provider rate-limit errors (e.g., RPM/429).
+- Add local commit-message fallback when final provider generation fails after retries.
+
+### Changed
+
+- Extend `AIResponse` with split suggestion metadata (`suggest_split`, `split_reason`, `split_groups`).
+- Add new settings for diff summarization and split suggestion control.
+- Change file-summary progress output to show only file names.
+- Switch internal summary/aggregation parsing to plain labeled text output instead of JSON.
+
 ## [0.2.4] - 2026-02-05
 
 ### Added

@@ -61,3 +61,37 @@ def test_regenerate_then_commit_when_message_becomes_valid(monkeypatch):
     assert result.exit_code == 0
     assert "Regenerated commit message: fix(core): handle nil input" in result.output
     assert commit_calls == [["git", "commit", "-m", "fix(core): handle nil input"]]
+
+
+def test_shows_split_suggestion_but_keeps_flow(monkeypatch):
+    async def fake_normalize(*args, **kwargs):
+        return AIResponse(
+            content="fix(core): tune parser guard",
+            model="test-model",
+            provider="test-provider",
+            tokens_used=12,
+            suggest_split=True,
+            split_reason="Detected independent UI and database changes.",
+            split_groups=["ui: web/app.tsx", "database: db/migrations/001.sql"],
+        )
+
+    commit_calls = []
+
+    def fake_subprocess_run(cmd, check=True):
+        commit_calls.append(cmd)
+        return subprocess.CompletedProcess(args=cmd, returncode=0)
+
+    monkeypatch.setattr("cmai.main.normalize_commit_async", fake_normalize)
+    monkeypatch.setattr("cmai.main.subprocess.run", fake_subprocess_run)
+    monkeypatch.setattr("cmai.main.settings.COMMIT_STRICT", False)
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["mixed changes"], input="c\n")
+
+    assert result.exit_code == 0
+    assert (
+        "Suggestion: detected potentially independent staged changes." in result.output
+    )
+    assert "Detected independent UI and database changes." in result.output
+    assert "- ui: web/app.tsx" in result.output
+    assert commit_calls == [["git", "commit", "-m", "fix(core): tune parser guard"]]

@@ -56,6 +56,7 @@ class AnthropicProvider(BaseAIClient):
         return bool(self.api_key)
 
     async def normalize_commit(self, prompt: str, **kargs) -> AIResponse:
+        silent = bool(kargs.pop("silent", False))
         diff_content = kargs.pop("diff_content", None)
         if diff_content:
             log_prompt = prompt.replace(
@@ -103,7 +104,8 @@ class AnthropicProvider(BaseAIClient):
                             self.logger.debug("Starting to answer...")
                             is_answering = True
                         text = event.delta.text
-                        self.stream_logger.info(text)
+                        if not silent:
+                            self.stream_logger.info(text)
                         response += text
 
                 # 处理消息结束事件
@@ -116,7 +118,12 @@ class AnthropicProvider(BaseAIClient):
         if total_tokens == 0:
             self.logger.warning("No usage information received")
 
-        self.logger.info(f"Final normalized commit message: {response.strip()}")
+        if not silent:
+            self.logger.info(f"Final normalized commit message: {response.strip()}")
+        else:
+            self.logger.debug(
+                "Final normalized commit message generated in silent mode"
+            )
 
         return AIResponse(
             content=response.strip(),
