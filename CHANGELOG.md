@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [v0.2.5] - 202602-25
 
 ### Added
 
@@ -9,6 +9,7 @@
 - Add optional split-commit recommendation when staged changes appear to contain independent topics.
 - Add automatic exponential backoff retry for provider rate-limit errors (e.g., RPM/429).
 - Add local commit-message fallback when final provider generation fails after retries.
+- Add configurable commit-convention enforcement (e.g., Conventional Commits/Angular) with `settings.env` format preferences and structured `feat:`/`fix:`/`docs:`-style output support.
 
 ### Changed
 
