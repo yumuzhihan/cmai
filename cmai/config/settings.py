@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional, get_args, get_origin
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
@@ -28,10 +28,22 @@ class Settings(BaseSettings):
     ENABLE_THINKING: bool = True
     THINKING_BUDGET: int = 1024  # Only For Anthropic
 
+    COMMIT_SPEC: str = "conventional"
+    COMMIT_STRICT: bool = True
+    COMMIT_ALLOWED_TYPES: Optional[str] = None
+    COMMIT_SCOPE_POLICY: str = "optional"
+    COMMIT_SUBJECT_MAX_LEN: int = 72
+    COMMIT_HEADER_MAX_LEN: int = 100
+    COMMIT_SUBJECT_CASE: str = "lower"
+    COMMIT_ALLOW_BANG: bool = True
+
     PROMPT_TEMPLATE: str = (
-        "请你根据用户的描述{{user_input}}，生成一个规范化的commit信息。请确保信息简洁明了，符合常规的commit规范。\n"
-        + "修改的信息包括：{{diff_content}}。你的回复应该只包含规范化的commit信息，不需要其他内容。\n"
-        + "请用{{language}}回答，不要包含任何其他语言或注释。\n"
+        "You are a strict Git commit message generator. Generate exactly one commit message based on the user's intent and staged changes.\n"
+        + "User intent: {{user_input}}\n"
+        + "Staged changes: {{diff_content}}\n"
+        + "Output language: {{language}}\n"
+        + "You must follow the commit specification rules provided later. If there is any conflict, those rules take highest priority.\n"
+        + "Return only the final commit message text. Do not add explanations, code fences, prefixes, suffixes, or multiple lines.\n"
     )
 
     MAX_DIFF_LENGTH: int = 8000
@@ -55,6 +67,30 @@ class Settings(BaseSettings):
             self.Config.env_file = env_file
         self._load_env_file()
 
+    def _parse_value(self, key: str, raw_value: str) -> Any:
+        field = self.__class__.model_fields.get(key)
+        if field is None:
+            return raw_value
+
+        annotation = field.annotation
+        origin = get_origin(annotation)
+        args = get_args(annotation)
+
+        target_type = annotation
+        if origin is not None and type(None) in args:
+            non_none_types = [arg for arg in args if arg is not type(None)]
+            if len(non_none_types) == 1:
+                target_type = non_none_types[0]
+
+        if target_type is bool:
+            return raw_value.lower() in {"1", "true", "yes", "on"}
+        if target_type is int:
+            return int(raw_value)
+        if target_type is float:
+            return float(raw_value)
+
+        return raw_value
+
     def _load_env_file(self):
         env_file = Path(self.Config.env_file)
         if env_file.exists():
@@ -62,7 +98,8 @@ class Settings(BaseSettings):
                 for line in f:
                     if line.strip() and not line.startswith("#"):
                         key, value = line.strip().split("=", 1)
-                        setattr(self, key.strip(), value.strip())
+                        parsed = self._parse_value(key.strip(), value.strip())
+                        setattr(self, key.strip(), parsed)
 
 
 settings = Settings()

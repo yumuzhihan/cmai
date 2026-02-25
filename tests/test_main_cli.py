@@ -1,0 +1,63 @@
+import subprocess
+
+from click.testing import CliRunner
+
+from cmai.main import main
+from cmai.providers.base import AIResponse
+
+
+def test_strict_mode_hides_commit_option_when_invalid(monkeypatch):
+    async def fake_normalize(*args, **kwargs):
+        return AIResponse(
+            content="invalid message",
+            model="test-model",
+            provider="test-provider",
+            tokens_used=10,
+        )
+
+    monkeypatch.setattr("cmai.main.normalize_commit_async", fake_normalize)
+    monkeypatch.setattr("cmai.main.settings.COMMIT_STRICT", True)
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["fix bug"], input="a\n")
+
+    assert result.exit_code == 0
+    assert "Action ([e]dit / [r]egenerate / [a]bort)" in result.output
+    assert "Action ([c]ommit / [e]dit / [r]egenerate / [a]bort)" not in result.output
+
+
+def test_regenerate_then_commit_when_message_becomes_valid(monkeypatch):
+    responses = [
+        AIResponse(
+            content="invalid message",
+            model="test-model",
+            provider="test-provider",
+            tokens_used=10,
+        ),
+        AIResponse(
+            content="fix(core): handle nil input",
+            model="test-model",
+            provider="test-provider",
+            tokens_used=12,
+        ),
+    ]
+
+    async def fake_normalize(*args, **kwargs):
+        return responses.pop(0)
+
+    commit_calls = []
+
+    def fake_subprocess_run(cmd, check=True):
+        commit_calls.append(cmd)
+        return subprocess.CompletedProcess(args=cmd, returncode=0)
+
+    monkeypatch.setattr("cmai.main.normalize_commit_async", fake_normalize)
+    monkeypatch.setattr("cmai.main.subprocess.run", fake_subprocess_run)
+    monkeypatch.setattr("cmai.main.settings.COMMIT_STRICT", True)
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["fix bug"], input="r\n\nc\n")
+
+    assert result.exit_code == 0
+    assert "Regenerated commit message: fix(core): handle nil input" in result.output
+    assert commit_calls == [["git", "commit", "-m", "fix(core): handle nil input"]]
