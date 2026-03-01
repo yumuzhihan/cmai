@@ -1,7 +1,9 @@
 import pytest
+import time
 
-from cmai.core.normalizer import Normalizer
+from cmai.core.normalizer import FileDiffSummary, Normalizer
 from cmai.providers.base import AIResponse
+from cmai.utils.git_staged_analyzer import StagedFileChange
 
 
 class FlakyRateLimitProvider:
@@ -58,3 +60,96 @@ async def test_call_provider_with_retry_does_not_retry_non_limit_error(monkeypat
 
     with pytest.raises(RuntimeError, match="network disconnected"):
         await normalizer._call_provider_with_retry(NonLimitProvider(), "test")
+
+
+@pytest.mark.anyio
+async def test_summarize_files_with_ai_keeps_order_and_uses_progress(monkeypatch):
+    normalizer = Normalizer()
+
+    entries = [
+        StagedFileChange(
+            path="a.py",
+            status="modified",
+            full_diff="",
+            preview_diff="+a",
+            is_preview_only=True,
+        ),
+        StagedFileChange(
+            path="b.py",
+            status="modified",
+            full_diff="",
+            preview_diff="+b",
+            is_preview_only=True,
+        ),
+        StagedFileChange(
+            path="c.py",
+            status="modified",
+            full_diff="",
+            preview_diff="+c",
+            is_preview_only=True,
+        ),
+    ]
+
+    class DummyProgress:
+        def __init__(self, total: int, desc: str, unit: str):
+            self.total = total
+            self.desc = desc
+            self.unit = unit
+            self.current = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def update(self, value: int):
+            self.current += value
+
+    progress: dict[str, DummyProgress] = {}
+
+    def fake_tqdm(*, total: int, desc: str, unit: str):
+        bar = DummyProgress(total=total, desc=desc, unit=unit)
+        progress["bar"] = bar
+        return bar
+
+    monkeypatch.setattr("cmai.core.normalizer.tqdm", fake_tqdm)
+
+    def fake_summarize(index: int, entry: StagedFileChange, language: str):
+        del language
+        time.sleep((len(entries) - index) * 0.01)
+        if entry.path == "b.py":
+            return index, normalizer._heuristic_file_summary(entry)
+        return (
+            index,
+            FileDiffSummary(
+                path=entry.path,
+                status=entry.status,
+                summary=f"custom {entry.path}",
+                tags=("core", "modified"),
+                area="core",
+            ),
+        )
+
+    monkeypatch.setattr(
+        normalizer,
+        "_summarize_file_with_ai_in_thread",
+        fake_summarize,
+    )
+
+    file_summaries = await normalizer._summarize_files_with_ai(
+        provider=object(),
+        entries=entries,
+        language="English",
+    )
+
+    assert [item.path for item in file_summaries] == ["a.py", "b.py", "c.py"]
+    assert file_summaries[0].summary == "custom a.py"
+    assert file_summaries[1].summary == "update b.py"
+    assert file_summaries[2].summary == "custom c.py"
+
+    bar = progress["bar"]
+    assert bar.total == 3
+    assert bar.desc == "Summarizing files"
+    assert bar.unit == "file"
+    assert bar.current == 3

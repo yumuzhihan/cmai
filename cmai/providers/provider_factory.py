@@ -131,6 +131,7 @@ class ProviderFactory:
         provider_name: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        log_creation: bool = True,
         **kwargs,
     ) -> BaseAIClient:
         """
@@ -169,9 +170,10 @@ class ProviderFactory:
                     f"Provider {final_provider_name} configuration validation failed"
                 )
 
-            self.logger.info(
-                f"Created provider: {final_provider_name} with model: {init_kwargs.get('model', 'default')}"
-            )
+            if log_creation:
+                self.logger.info(
+                    f"Created provider: {final_provider_name} with model: {init_kwargs.get('model', 'default')}"
+                )
             return provider_instance
 
         except Exception as e:
@@ -286,6 +288,7 @@ def create_provider(
     provider_name: Optional[str] = None,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
+    log_creation: bool = True,
     **kwargs,
 ) -> BaseAIClient:
     """
@@ -305,7 +308,13 @@ def create_provider(
         provider = create_provider("openai", api_key="your-api-key")
     """
     factory = ProviderFactory()
-    return factory.create_provider(provider_name, api_key, model, **kwargs)
+    return factory.create_provider(
+        provider_name,
+        api_key,
+        model,
+        log_creation=log_creation,
+        **kwargs,
+    )
 
 
 def register_custom_provider(name: str, provider_class: Type[BaseAIClient]):

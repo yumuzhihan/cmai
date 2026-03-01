@@ -10,6 +10,7 @@ from cmai.core.commit_spec import resolve_commit_rules
 from cmai.core.commit_validator import validate_commit_message
 from cmai.core.get_logger import LoggerFactory
 from cmai.core.normalizer import Normalizer
+from cmai.utils.git_staged_analyzer import GitStagedAnalyzer
 
 
 async def normalize_commit_async(
@@ -20,6 +21,7 @@ async def normalize_commit_async(
     previous_message: Optional[str] = None,
     validation_errors: Optional[list[str]] = None,
     additional_prompt: Optional[str] = None,
+    use_file_summary_for_large_diff: Optional[bool] = None,
 ):
     logger = LoggerFactory().get_logger("CMAI")
 
@@ -39,6 +41,7 @@ async def normalize_commit_async(
             previous_message=previous_message,
             validation_errors=validation_errors,
             additional_prompt=additional_prompt,
+            use_file_summary_for_large_diff=use_file_summary_for_large_diff,
         )
         return normalized_message
     except Exception as e:
@@ -59,8 +62,42 @@ def main(
 ):
     """将口语化的commit信息规范化"""
     try:
+        if config:
+            settings.load_from_env(config)
+
+        use_file_summary_for_large_diff: Optional[bool] = None
+        analyzer = GitStagedAnalyzer(repo_path=repo)
+        staged_entries = analyzer.get_staged_entries()
+        if not staged_entries:
+            raise click.ClickException("No staged changes found in the repository.")
+
+        _, is_truncated = analyzer.render_prompt_entries(staged_entries)
+        if is_truncated:
+            click.echo()
+            click.echo(
+                click.style(
+                    "Detected oversized staged diff. Choose context mode for generation:",
+                    fg="yellow",
+                )
+            )
+            mode = click.prompt(
+                "Mode ([s]ummary per file / [f]ile list only)",
+                default="s",
+                show_default=True,
+                type=click.Choice(["s", "f"], case_sensitive=False),
+            )
+            use_file_summary_for_large_diff = mode.lower() == "s"
+
         start_time = time.time()
-        result = asyncio.run(normalize_commit_async(message, config, repo, language))
+        result = asyncio.run(
+            normalize_commit_async(
+                message,
+                config,
+                repo,
+                language,
+                use_file_summary_for_large_diff=use_file_summary_for_large_diff,
+            )
+        )
         end_time = time.time()
         elapsed_time = end_time - start_time
         content = result.content
@@ -165,6 +202,7 @@ def main(
                         previous_message=content,
                         validation_errors=list(validation.errors),
                         additional_prompt=additional_prompt,
+                        use_file_summary_for_large_diff=use_file_summary_for_large_diff,
                     )
                 )
                 end_time = time.time()

@@ -49,13 +49,12 @@ class Settings(BaseSettings):
     MAX_DIFF_LENGTH: int = 8000
     MAX_DIFF_FILE_LINES: int = 50
     MAX_DIFF_FILES_FOR_AI: int = 30
-    ENABLE_DIFF_LOCAL_SUMMARY: bool = True
     ENABLE_SPLIT_SUGGESTION: bool = True
     SPLIT_CONFIDENCE_THRESHOLD: float = 0.75
-    DIFF_SUMMARY_CONCURRENCY: int = 4
-    RETRY_MAX_ATTEMPTS: int = 3
-    RETRY_BASE_DELAY_SECONDS: float = 1.0
-    RETRY_MAX_DELAY_SECONDS: float = 8.0
+    DIFF_SUMMARY_CONCURRENCY: int = 5
+    RETRY_MAX_ATTEMPTS: int = 5
+    RETRY_BASE_DELAY_SECONDS: float = 2.0
+    RETRY_MAX_DELAY_SECONDS: float = 30.0
 
     class Config:
         """

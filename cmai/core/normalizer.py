@@ -1,8 +1,9 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from pathlib import Path
 import re
 from typing import Any, Optional
+from tqdm import tqdm
 
 from cmai.config.settings import settings
 from cmai.core.commit_spec import build_commit_rules_prompt, resolve_commit_rules
@@ -44,6 +45,7 @@ class Normalizer:
         previous_message: Optional[str] = None,
         validation_errors: Optional[list[str]] = None,
         additional_prompt: Optional[str] = None,
+        use_file_summary_for_large_diff: Optional[bool] = None,
     ) -> AIResponse:
         git_analyzer = GitStagedAnalyzer(repo_path=repo_path)
         staged_entries = git_analyzer.get_staged_entries()
@@ -56,12 +58,19 @@ class Normalizer:
             raise ValueError("No staged textual changes found in the repository.")
 
         provider = create_provider()
+        enable_ai_summary = True
+        if is_truncated and use_file_summary_for_large_diff is not None:
+            enable_ai_summary = use_file_summary_for_large_diff
+
+        if is_truncated and not enable_ai_summary:
+            cached_diff = self._build_file_list_context(staged_entries)
 
         diff_insights = await self._build_diff_insights(
             provider=provider,
             entries=staged_entries,
             language=language or settings.RESPONSE_LANGUAGE,
             is_truncated=is_truncated,
+            enable_ai_summary=enable_ai_summary,
         )
 
         diff_content = self._compose_diff_context(cached_diff, diff_insights)
@@ -122,9 +131,10 @@ class Normalizer:
         entries: list[StagedFileChange],
         language: str,
         is_truncated: bool,
+        enable_ai_summary: bool,
     ) -> DiffInsights:
         limited_entries = entries[: max(1, settings.MAX_DIFF_FILES_FOR_AI)]
-        if not settings.ENABLE_DIFF_LOCAL_SUMMARY:
+        if not enable_ai_summary:
             return self._heuristic_diff_insights(limited_entries, is_truncated)
 
         file_summaries = await self._summarize_files_with_ai(
@@ -177,59 +187,94 @@ class Normalizer:
         entries: list[StagedFileChange],
         language: str,
     ) -> list[FileDiffSummary]:
+        del provider
         concurrency = max(1, settings.DIFF_SUMMARY_CONCURRENCY)
-        semaphore = asyncio.Semaphore(concurrency)
+        if not entries:
+            return []
 
-        async def _run(entry: StagedFileChange) -> FileDiffSummary:
-            async with semaphore:
-                file_label = Path(entry.path).name or entry.path
-                self.stream_logger.info(
-                    f"\nGenerating summary for file {file_label}...\n"
+        loop = asyncio.get_running_loop()
+        summaries: list[Optional[FileDiffSummary]] = [None] * len(entries)
+
+        with ThreadPoolExecutor(max_workers=concurrency) as executor:
+            futures = [
+                loop.run_in_executor(
+                    executor,
+                    self._summarize_file_with_ai_in_thread,
+                    index,
+                    entry,
+                    language,
                 )
-                prompt = (
-                    "Summarize one staged file diff. Use plain text format only.\n"
-                    f"Output language: {language}\n"
-                    f"File path: {entry.path}\n"
-                    f"File status: {entry.status}\n"
-                    "Diff snippet:\n"
-                    f"{entry.preview_diff}\n"
-                    "Output exactly in this shape:\n"
-                    "Summary: <one sentence, <=18 words>\n"
-                    "Tags: <comma-separated short tags>\n"
-                    "Area: <ui|database|api|test|docs|ci|core>\n"
-                    "No markdown, no code fences, no JSON."
+                for index, entry in enumerate(entries)
+            ]
+
+            with tqdm(
+                total=len(entries),
+                desc="Summarizing files",
+                unit="file",
+            ) as progress:
+                for completed in asyncio.as_completed(futures):
+                    index, file_summary = await completed
+                    summaries[index] = file_summary
+                    progress.update(1)
+
+        return [item for item in summaries if item is not None]
+
+    def _build_file_list_context(self, entries: list[StagedFileChange]) -> list[str]:
+        lines = [
+            f"Total staged changes exceed {settings.MAX_DIFF_LENGTH} characters.",
+            "Using staged file list only:",
+        ]
+        lines.extend(f"- {entry.path} ({entry.status})" for entry in entries)
+        return ["\n".join(lines)]
+
+    def _summarize_file_with_ai_in_thread(
+        self,
+        index: int,
+        entry: StagedFileChange,
+        language: str,
+    ) -> tuple[int, FileDiffSummary]:
+        prompt = (
+            "Summarize one staged file diff. Use plain text format only.\n"
+            f"Output language: {language}\n"
+            f"File path: {entry.path}\n"
+            f"File status: {entry.status}\n"
+            "Diff snippet:\n"
+            f"{entry.preview_diff}\n"
+            "Output exactly in this shape:\n"
+            "Summary: <one sentence, <=18 words>\n"
+            "Tags: <comma-separated short tags>\n"
+            "Area: <ui|database|api|test|docs|ci|core>\n"
+            "No markdown, no code fences, no JSON."
+        )
+
+        try:
+            provider = create_provider(log_creation=False)
+            result = asyncio.run(
+                self._call_provider_with_retry(
+                    provider,
+                    prompt,
+                    silent=True,
                 )
-                try:
-                    result = await self._call_provider_with_retry(
-                        provider,
-                        prompt,
-                        silent=True,
-                    )
-                    parsed = self._parse_labeled_text(result.content)
-                    summary = parsed.get("summary", "").strip()
-                    tags = self._split_csv(parsed.get("tags", ""))
-                    area = parsed.get("area", "").strip().lower()
-                    if summary:
-                        file_summary = FileDiffSummary(
-                            path=entry.path,
-                            status=entry.status,
-                            summary=summary,
-                            tags=tuple(tags)[:5],
-                            area=area or self._infer_area(entry.path),
-                        )
-                        self.stream_logger.info(
-                            f"{file_label} summary: {file_summary.summary}\n"
-                        )
-                        return file_summary
-                except Exception:
-                    pass
+            )
+            parsed = self._parse_labeled_text(result.content)
+            summary = parsed.get("summary", "").strip()
+            tags = self._split_csv(parsed.get("tags", ""))
+            area = parsed.get("area", "").strip().lower()
+            if summary:
+                return (
+                    index,
+                    FileDiffSummary(
+                        path=entry.path,
+                        status=entry.status,
+                        summary=summary,
+                        tags=tuple(tags)[:5],
+                        area=area or self._infer_area(entry.path),
+                    ),
+                )
+        except Exception:
+            pass
 
-                fallback = self._heuristic_file_summary(entry)
-                self.stream_logger.info(f"{file_label} summary: {fallback.summary}\n")
-                return fallback
-
-        tasks = [_run(entry) for entry in entries]
-        return await asyncio.gather(*tasks)
+        return index, self._heuristic_file_summary(entry)
 
     async def _aggregate_with_ai(
         self,
@@ -482,9 +527,10 @@ class Normalizer:
         prompt: str,
         **kwargs,
     ) -> AIResponse:
-        attempts = max(1, settings.RETRY_MAX_ATTEMPTS)
-        base_delay = max(0.1, settings.RETRY_BASE_DELAY_SECONDS)
-        max_delay = max(base_delay, settings.RETRY_MAX_DELAY_SECONDS)
+        attempts = max(5, settings.RETRY_MAX_ATTEMPTS)
+        base_delay = max(2.0, settings.RETRY_BASE_DELAY_SECONDS)
+        max_delay = max(base_delay, settings.RETRY_MAX_DELAY_SECONDS, 30.0)
+        retry_scale = 1.5
 
         for attempt in range(1, attempts + 1):
             try:
@@ -493,7 +539,10 @@ class Normalizer:
                 if not self._is_rate_limit_error(exc) or attempt >= attempts:
                     raise
 
-                wait_seconds = min(max_delay, base_delay * (2 ** (attempt - 1)))
+                wait_seconds = min(
+                    max_delay,
+                    base_delay * (2 ** (attempt - 1)) * retry_scale,
+                )
                 self.logger.warning(
                     "Rate limit detected, retrying in %.1fs (attempt %d/%d): %s",
                     wait_seconds,

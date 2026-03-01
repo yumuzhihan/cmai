@@ -1,5 +1,21 @@
 # Changelog
 
+## [v0.2.7] - 2026-03-01
+
+### Added
+
+- Add interactive large-diff mode selection in CLI: choose file-level AI summaries or file-list-only context when staged diff exceeds `MAX_DIFF_LENGTH`.
+- Add concurrent per-file summary generation with `tqdm` progress bar output.
+- Add `tqdm` runtime dependency.
+
+### Changed
+
+- Change large-diff summary decision from static config to runtime user prompt.
+- Remove `ENABLE_DIFF_LOCAL_SUMMARY` setting in favor of per-run interactive choice when diff is truncated.
+- Change file-summary progress output to a single `tqdm` progress bar (no per-file summary log lines).
+- Increase retry defaults and backoff profile for provider rate limits (`RETRY_MAX_ATTEMPTS=5`, `RETRY_BASE_DELAY_SECONDS=2.0`, `RETRY_MAX_DELAY_SECONDS=30.0`, scale factor `1.5`).
+- Set default `DIFF_SUMMARY_CONCURRENCY` to `5`.
+
 ## [v0.2.6] - 2026-02-25
 
 ### Added
