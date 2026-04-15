@@ -6,7 +6,7 @@ from cmai.providers.base import AIResponse
 
 from .base import BaseAIClient
 from cmai.config.settings import settings
-from cmai.core.get_logger import LoggerFactory
+from cmai.core.logger_factory import LoggerFactory
 
 
 class ZhipuAiProvider(BaseAIClient):

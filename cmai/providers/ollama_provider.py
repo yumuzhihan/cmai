@@ -2,7 +2,7 @@ from typing import Optional
 from ollama import AsyncClient
 
 from cmai.config.settings import settings
-from cmai.core.get_logger import LoggerFactory
+from cmai.core.logger_factory import LoggerFactory
 from cmai.providers.base import BaseAIClient, AIResponse
 
 

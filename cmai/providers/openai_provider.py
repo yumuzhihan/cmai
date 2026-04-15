@@ -5,7 +5,7 @@ from openai import OpenAI
 
 from cmai.config.settings import settings
 from cmai.providers.base import BaseAIClient, AIResponse
-from cmai.core.get_logger import LoggerFactory
+from cmai.core.logger_factory import LoggerFactory
 
 
 class OpenAIProvider(BaseAIClient):

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from cmai.config.settings import settings
 from cmai.core.commit_spec import build_commit_rules_prompt, resolve_commit_rules
-from cmai.core.get_logger import LoggerFactory
+from cmai.core.logger_factory import LoggerFactory
 from cmai.utils.git_staged_analyzer import GitStagedAnalyzer, StagedFileChange
 from cmai.providers.base import AIResponse
 from cmai.providers.provider_factory import create_provider

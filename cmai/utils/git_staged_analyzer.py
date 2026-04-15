@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from pathlib import Path
 
-from cmai.core.get_logger import LoggerFactory
+from cmai.core.logger_factory import LoggerFactory
 from cmai.config.settings import settings
 
 
