@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional
 import time
 import subprocess
+import json
 
 import click
 
@@ -34,7 +35,7 @@ async def normalize_commit_async(
         config_dict["API_BASE"] = "***"
     if "API_KEY" in config_dict:
         config_dict["API_KEY"] = "***"
-    logger.debug(f"Using configuration: {config_dict}")
+    logger.debug(f"Using configuration: {json.dumps(config_dict, indent=2)}")
     logger.info(f"Normalizing commit message: {message}")
 
     normalizer = Normalizer()

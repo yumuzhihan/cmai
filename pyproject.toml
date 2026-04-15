@@ -30,6 +30,7 @@ dependencies = [
     "httpx[socks]>=0.28.1",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.0",
+    "rich>=14.3.2",
     "tqdm>=4.66.0",
 ]
 
@@ -58,6 +59,10 @@ Homepage = "https://github.com/yumuzhihan/cmai"
 Repository = "https://github.com/yumuzhihan/cmai"
 Documentation = "https://github.com/yumuzhihan/cmai#readme"
 "Bug Tracker" = "https://github.com/yumuzhihan/cmai/issues"
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
 
 [project.scripts]
 cmai = "cmai.main:main"
