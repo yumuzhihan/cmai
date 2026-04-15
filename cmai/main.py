@@ -28,7 +28,13 @@ async def normalize_commit_async(
     if config:
         settings.load_from_env(config)
 
-    logger.debug(f"Using configuration: {settings.model_dump_json(indent=2)}")
+    config_dict = settings.model_dump()
+    # hide sensitive info in logs
+    if "API_BASE" in config_dict:
+        config_dict["API_BASE"] = "***"
+    if "API_KEY" in config_dict:
+        config_dict["API_KEY"] = "***"
+    logger.debug(f"Using configuration: {config_dict}")
     logger.info(f"Normalizing commit message: {message}")
 
     normalizer = Normalizer()
