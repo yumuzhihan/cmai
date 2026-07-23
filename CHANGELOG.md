@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.2.8] - 2026-07-23
+
+### Added
+
+- Add the interactive `cmai config` command for safely managing global provider settings, commit rules, response language, and prompt templates.
+- Add the explicit `cmai commit` subcommand while preserving the existing default `cmai <message>` invocation.
+
+### Changed
+
+- Refine commit-generation output spacing and configuration loading behavior.
+- Update configuration documentation and add coverage for the configuration workflow and session output.
+- Format the codebase with Black.
+
+### Fixed
+
+- Handle staged Git rename and delete entries as structural changes, preventing warnings and incorrect large-diff split suggestions.
+
 ## [v0.2.7] - 2026-03-01
 
 ### Added
