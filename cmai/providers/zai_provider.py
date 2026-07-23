@@ -70,6 +70,9 @@ class ZhipuAiProvider(BaseAIClient):
                                 self.logger.info(
                                     "Detected reasoning content...\nPlease wait..."
                                 )
+                                # Keep the stderr status message separate from
+                                # the stdout reasoning stream.
+                                self.stream_logger.info("\n")
                             is_reasoning = True
                         if not silent:
                             self.stream_logger.info(
@@ -79,7 +82,7 @@ class ZhipuAiProvider(BaseAIClient):
                     else:
                         if not is_answering:
                             if not silent:
-                                self.stream_logger.info("\n")
+                                self.stream_logger.info("\n\n")
                             self.logger.debug("Starting to answer...")
                             is_answering = True
                         if not silent:
@@ -100,6 +103,7 @@ class ZhipuAiProvider(BaseAIClient):
             usage = 0
 
         if not silent:
+            self.stream_logger.info("\n\n")
             self.logger.info(f"Final normalized commit message: {response.strip()}")
         else:
             self.logger.debug(

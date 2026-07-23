@@ -62,6 +62,78 @@ async def test_call_provider_with_retry_does_not_retry_non_limit_error(monkeypat
         await normalizer._call_provider_with_retry(NonLimitProvider(), "test")
 
 
+def test_heuristic_split_ignores_deleted_and_renamed_files():
+    normalizer = Normalizer()
+    file_summaries = [
+        FileDiffSummary(
+            path="src/ui/old_a.py",
+            status="deleted",
+            summary="remove src/ui/old_a.py",
+            tags=("ui", "deleted"),
+            area="ui",
+        ),
+        FileDiffSummary(
+            path="src/ui/old_b.py",
+            status="deleted",
+            summary="remove src/ui/old_b.py",
+            tags=("ui", "deleted"),
+            area="ui",
+        ),
+        FileDiffSummary(
+            path="db/new_a.py",
+            status="renamed",
+            summary="rename db/old_a.py to db/new_a.py",
+            tags=("database", "renamed"),
+            area="database",
+        ),
+        FileDiffSummary(
+            path="db/new_b.py",
+            status="renamed",
+            summary="rename db/old_b.py to db/new_b.py",
+            tags=("database", "renamed"),
+            area="database",
+        ),
+    ]
+
+    suggest_split, reason, groups = normalizer._heuristic_split(file_summaries)
+
+    assert suggest_split is False
+    assert reason == ""
+    assert groups == []
+
+
+@pytest.mark.anyio
+async def test_aggregate_does_not_suggest_split_for_structural_changes():
+    normalizer = Normalizer()
+    file_summaries = [
+        FileDiffSummary(
+            path="src/legacy.py",
+            status="deleted",
+            summary="remove src/legacy.py",
+            tags=("core", "deleted"),
+            area="core",
+        ),
+        FileDiffSummary(
+            path="docs/new-name.md",
+            status="renamed",
+            summary="rename docs/old-name.md to docs/new-name.md",
+            tags=("docs", "renamed"),
+            area="docs",
+        ),
+    ]
+
+    aggregate, suggest_split, reason, groups = await normalizer._aggregate_with_ai(
+        provider=object(),
+        file_summaries=file_summaries,
+        language="English",
+    )
+
+    assert aggregate == "Staged changes mainly touch: core, docs."
+    assert suggest_split is False
+    assert reason == ""
+    assert groups == []
+
+
 @pytest.mark.anyio
 async def test_summarize_files_with_ai_keeps_order_and_uses_progress(monkeypatch):
     normalizer = Normalizer()

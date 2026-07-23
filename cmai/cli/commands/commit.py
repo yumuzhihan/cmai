@@ -2,10 +2,24 @@ from typing import Optional
 
 import click
 
-from cmai.cli.session import CommitSession
+
+def run_commit(
+    message: str,
+    config: Optional[str] = None,
+    repo: Optional[str] = None,
+    language: Optional[str] = None,
+) -> None:
+    from cmai.cli.session import CommitSession
+
+    CommitSession().run(
+        message=message,
+        config=config,
+        repo=repo,
+        language=language,
+    )
 
 
-@click.command()
+@click.command("commit")
 @click.argument("message", type=str, required=True)
 @click.option(
     "--config", "-c", help="The path to the configuration file", default=None, type=str
@@ -16,7 +30,7 @@ from cmai.cli.session import CommitSession
 @click.option(
     "--language", "-l", help="The language for the response", default=None, type=str
 )
-def main(
+def commit_command(
     message: str,
     config: Optional[str] = None,
     repo: Optional[str] = None,
@@ -24,7 +38,7 @@ def main(
 ) -> None:
     """Normalize informal commit messages"""
     try:
-        CommitSession().run(
+        run_commit(
             message=message,
             config=config,
             repo=repo,
@@ -32,3 +46,6 @@ def main(
         )
     except Exception as e:
         raise click.ClickException(str(e))
+
+
+main = commit_command

@@ -1,4 +1,4 @@
-from typing import Dict, Type, Optional, Any, Callable
+from typing import Any, Dict, Optional, Type
 import importlib
 
 from cmai.config.settings import settings
@@ -45,7 +45,7 @@ class ProviderFactory:
             self.logger.info("OpenAI compatible providers registered successfully")
 
             success_registered = True
-        except:
+        except Exception:
             self.logger.debug("Failed to register OpenAI compatible providers")
 
         try:
@@ -58,8 +58,8 @@ class ProviderFactory:
             self.logger.info("Ollama providers registered successfully")
 
             success_registered = True
-        except:
-            self.logger.debug(f"Failed to register Ollama provider")
+        except Exception:
+            self.logger.debug("Failed to register Ollama provider")
 
         try:
             # 注册 Zai Provider
@@ -74,8 +74,8 @@ class ProviderFactory:
             self.logger.info("Zai providers registered successfully")
 
             success_registered = True
-        except:
-            self.logger.debug(f"Failed to register Zai provider")
+        except Exception:
+            self.logger.debug("Failed to register Zai provider")
 
         try:
             # 注册 Anthropic Provider
@@ -87,8 +87,8 @@ class ProviderFactory:
             self.logger.info("Anthropic providers registered successfully")
 
             success_registered = True
-        except:
-            self.logger.debug(f"Failed to register Anthropic provider")
+        except Exception:
+            self.logger.debug("Failed to register Anthropic provider")
 
         if not success_registered:
             self.logger.error(
@@ -104,7 +104,7 @@ class ProviderFactory:
             provider_class: Provider 类
         """
         if not issubclass(provider_class, BaseAIClient):
-            raise ValueError(f"Provider class must inherit from BaseAIClient")
+            raise ValueError("Provider class must inherit from BaseAIClient")
 
         self._providers[name.lower()] = provider_class
         self.logger.debug(f"Registered provider: {name} -> {provider_class.__name__}")
@@ -250,18 +250,20 @@ class ProviderFactory:
         elif hasattr(settings, "MODEL") and settings.MODEL:
             init_kwargs["model"] = settings.MODEL
 
+        # 针对特定 provider 的特殊处理
+        if provider_name in {"ollama", "local"}:
+            # Ollama 特殊配置
+            if hasattr(settings, "OLLAMA_HOST") and settings.OLLAMA_HOST:
+                init_kwargs["host"] = settings.OLLAMA_HOST
+            elif hasattr(settings, "API_BASE") and settings.API_BASE:
+                init_kwargs["host"] = settings.API_BASE
+            if not init_kwargs.get("model"):
+                init_kwargs["model"] = "qwen3:8b"
+
         if init_kwargs.get("model") is None:
             raise ValueError(
                 "Model must be specified either as an argument or in settings"
             )
-
-        # 针对特定 provider 的特殊处理
-        if provider_name == "ollama":
-            # Ollama 特殊配置
-            if hasattr(settings, "OLLAMA_HOST") and settings.OLLAMA_HOST:
-                init_kwargs["host"] = settings.OLLAMA_HOST
-            if not init_kwargs.get("model"):
-                init_kwargs["model"] = "qwen3:8b"
 
         return init_kwargs
 

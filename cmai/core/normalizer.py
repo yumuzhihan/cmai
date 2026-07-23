@@ -1,16 +1,19 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 import re
 from typing import Any, Optional
 from tqdm import tqdm
 
-from cmai.config.settings import settings
+from cmai.config.settings import normalize_prompt_template_variables, settings
 from cmai.core.commit_spec import build_commit_rules_prompt, resolve_commit_rules
 from cmai.core.logger_factory import LoggerFactory
 from cmai.utils.git_staged_analyzer import GitStagedAnalyzer, StagedFileChange
 from cmai.providers.base import AIResponse
 from cmai.providers.provider_factory import create_provider
+
+
+STRUCTURAL_CHANGE_STATUSES = frozenset({"deleted", "renamed"})
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,7 @@ class Normalizer:
 
         diff_content = self._compose_diff_context(cached_diff, diff_insights)
 
+        prompt_template = normalize_prompt_template_variables(prompt_template)
         prompt = (
             prompt_template.replace("{user_input}", user_input)
             .replace("{diff_content}", diff_content)
@@ -192,13 +196,11 @@ class Normalizer:
         if not entries:
             return []
 
-        loop = asyncio.get_running_loop()
         summaries: list[Optional[FileDiffSummary]] = [None] * len(entries)
 
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             futures = [
-                loop.run_in_executor(
-                    executor,
+                executor.submit(
                     self._summarize_file_with_ai_in_thread,
                     index,
                     entry,
@@ -212,8 +214,8 @@ class Normalizer:
                 desc="Summarizing files",
                 unit="file",
             ) as progress:
-                for completed in asyncio.as_completed(futures):
-                    index, file_summary = await completed
+                for completed in as_completed(futures):
+                    index, file_summary = completed.result()
                     summaries[index] = file_summary
                     progress.update(1)
 
@@ -233,6 +235,9 @@ class Normalizer:
         entry: StagedFileChange,
         language: str,
     ) -> tuple[int, FileDiffSummary]:
+        if entry.is_structural_change:
+            return index, self._heuristic_file_summary(entry)
+
         prompt = (
             "Summarize one staged file diff. Use plain text format only.\n"
             f"Output language: {language}\n"
@@ -285,18 +290,36 @@ class Normalizer:
         if not file_summaries:
             return "", False, "", []
 
+        split_candidates = self._split_eligible_summaries(file_summaries)
+        if not split_candidates:
+            return (
+                self._heuristic_aggregate(file_summaries, is_truncated=False),
+                False,
+                "",
+                [],
+            )
+
         data_lines = []
         for item in file_summaries:
             data_lines.append(
                 f"- path={item.path}; status={item.status}; area={item.area}; tags={','.join(item.tags)}; summary={item.summary}"
             )
 
+        split_candidate_lines = []
+        for item in split_candidates:
+            split_candidate_lines.append(
+                f"- path={item.path}; status={item.status}; area={item.area}; tags={','.join(item.tags)}; summary={item.summary}"
+            )
+
         prompt = (
             "You are analyzing staged file-level change summaries. Use plain text format only.\n"
             f"Output language: {language}\n"
-            "File summaries:\n"
+            "All file summaries (use these for the aggregate summary):\n"
             + "\n".join(data_lines)
-            + "\nRules: suggest_split should be true only when changes are largely independent topics.\n"
+            + "\nSummaries eligible for the split decision (deleted and renamed files are excluded):\n"
+            + "\n".join(split_candidate_lines)
+            + "\nRules: suggest_split should be true only when eligible changes are largely independent topics. "
+            + "A deletion or rename must never be a reason to suggest splitting.\n"
             + "Output exactly in this shape:\n"
             + "Aggregate Summary: <one or two sentences>\n"
             + "Suggest Split: <yes|no>\n"
@@ -394,7 +417,11 @@ class Normalizer:
             "renamed": "rename",
             "copied": "copy",
         }.get(entry.status, "update")
-        summary = f"{action} {entry.path}"
+        summary = (
+            f"rename {entry.old_path} to {entry.path}"
+            if entry.status == "renamed" and entry.old_path
+            else f"{action} {entry.path}"
+        )
         return FileDiffSummary(
             path=entry.path,
             status=entry.status,
@@ -421,7 +448,7 @@ class Normalizer:
         self, file_summaries: list[FileDiffSummary]
     ) -> tuple[bool, str, list[str]]:
         area_to_files: dict[str, list[str]] = {}
-        for item in file_summaries:
+        for item in self._split_eligible_summaries(file_summaries):
             area_to_files.setdefault(item.area, []).append(item.path)
 
         significant_groups = {
@@ -443,6 +470,15 @@ class Normalizer:
             f"({', '.join(significant_groups.keys())})."
         )
         return True, reason, groups
+
+    def _split_eligible_summaries(
+        self, file_summaries: list[FileDiffSummary]
+    ) -> list[FileDiffSummary]:
+        return [
+            item
+            for item in file_summaries
+            if item.status not in STRUCTURAL_CHANGE_STATUSES
+        ]
 
     def _infer_area(self, path: str) -> str:
         lower = path.lower()

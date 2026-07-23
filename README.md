@@ -22,7 +22,44 @@ pip install cmai[all-providers]
 
 ### 2. Configuration
 
-Create the configuration file at `~/.config/cmai/settings.env`:
+Run the interactive configuration wizard:
+
+```bash
+cmai config
+```
+
+It manages the global file at `~/.config/cmai/settings.env`. On the first run,
+the directory and file are created only after you review the redacted summary
+and confirm the save. Later runs let you reconfigure everything or change only
+the Provider, commit rules, or optional settings. API keys are hidden in the
+UI, and the saved file is owner-readable/writable only on POSIX systems.
+
+Install the provider extra you intend to use before opening the wizard:
+
+```bash
+uv tool install 'cmai[openai]'       # OpenAI-compatible providers
+uv tool install 'cmai[ollama]'       # Local Ollama
+uv tool install 'cmai[anthropic]'    # Claude
+uv tool install 'cmai[zai]'          # Zhipu AI
+# Or use pip
+# pip install 'cmai[openai]'
+# pip install 'cmai[ollama]'
+# pip install 'cmai[anthropic]'
+# pip install 'cmai[zai]'
+```
+
+The wizard discovers the providers that are actually installed. It supports
+custom/proxy endpoints through `API_BASE`; for Ollama, that endpoint is also
+used as the host when a legacy `OLLAMA_HOST` is not configured.
+
+For automation or a temporary configuration, `--config` still accepts a custom
+dotenv file and does not change the global configuration:
+
+```bash
+cmai commit "fix a bug" --config /path/to/settings.env
+```
+
+You can still write a custom file manually when needed:
 
 ```env
 # --- Remote Provider Example (OpenAI, DeepSeek, Zai, etc.) ---
@@ -67,7 +104,20 @@ RETRY_MAX_DELAY_SECONDS=30.0
 
 **Supported Providers:** openai, bailian, deepseek, siliconflow, anthropic, claude, zai (智谱), ollama.
 
-**Tip:** You can also set CMAI_API_KEY or ANTHROPIC_API_KEY as environment variables instead of putting them in the config file.
+**Tip:** You can also set `CMAI_API_KEY` or `ANTHROPIC_API_KEY` as environment variables instead of putting secrets in the config file. Never commit `settings.env` or share its contents.
+
+### Prompt Template Variables
+
+`PROMPT_TEMPLATE` must contain all three variables below. The interactive
+wizard can restore the built-in template or open your editor, and stores
+multi-line templates safely as a single encoded dotenv value.
+
+- `{user_input}` — your informal commit description
+- `{diff_content}` — staged-change context
+- `{language}` — requested response language
+
+Older templates using `{{user_input}}`, `{{diff_content}}`, and `{{language}}`
+continue to work; the wizard offers to migrate them when you edit one.
 
 ### 3. Usage
 
@@ -101,6 +151,8 @@ If a commit error occurs, an appropriate error message will be displayed and ret
 
 ```bash
 cmai [MESSAGE] [OPTIONS]
+cmai commit [MESSAGE] [OPTIONS]
+cmai config
 
 Options:
   -c, --config TEXT    Path to a custom configuration file

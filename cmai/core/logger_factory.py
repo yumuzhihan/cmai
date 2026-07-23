@@ -53,11 +53,21 @@ class LoggerFactory:
         return (Path.home() / ".logs" / "cmai" / "cmai.log").resolve()
 
     @classmethod
-    def _ensure_log_file(cls) -> None:
-        if cls._log_file.exists():
-            return
-        cls._log_file.parent.mkdir(parents=True, exist_ok=True)
-        cls._log_file.touch()
+    def _ensure_log_file(cls) -> bool:
+        """Prepare file logging without making CLI commands fail on read-only homes."""
+
+        try:
+            if not cls._log_file.exists():
+                cls._log_file.parent.mkdir(parents=True, exist_ok=True)
+                cls._log_file.touch()
+            # ``exists()`` alone is insufficient for a file mounted read-only
+            # by a sandbox or container. Verify append access before creating a
+            # FileHandler, otherwise an optional log destination can break CLI.
+            with cls._log_file.open("a", encoding="utf-8"):
+                pass
+        except OSError:
+            return False
+        return True
 
     @staticmethod
     def _build_file_handler() -> logging.FileHandler:
@@ -85,7 +95,7 @@ class LoggerFactory:
         return handler
 
     def get_logger(self, name: str) -> Logger:
-        self._ensure_log_file()
+        can_write_log_file = self._ensure_log_file()
 
         if name not in self._loggers:
             logger = logging.getLogger(name)
@@ -93,7 +103,8 @@ class LoggerFactory:
             logger.handlers.clear()
             logger.propagate = False
 
-            logger.addHandler(self._build_file_handler())
+            if can_write_log_file:
+                logger.addHandler(self._build_file_handler())
             logger.addHandler(self._build_rich_handler())
 
             self._loggers[name] = logger

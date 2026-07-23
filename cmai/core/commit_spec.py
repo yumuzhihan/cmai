@@ -64,12 +64,13 @@ def resolve_commit_rules(config: Settings) -> CommitRules:
     if subject_case not in {"lower", "sentence", "any"}:
         subject_case = default_case
 
+    configured_fields = config.model_fields_set
     subject_max_len = config.COMMIT_SUBJECT_MAX_LEN
-    if subject_max_len <= 0:
+    if "COMMIT_SUBJECT_MAX_LEN" not in configured_fields or subject_max_len <= 0:
         subject_max_len = default_subject_max
 
     header_max_len = config.COMMIT_HEADER_MAX_LEN
-    if header_max_len <= 0:
+    if "COMMIT_HEADER_MAX_LEN" not in configured_fields or header_max_len <= 0:
         header_max_len = default_header_max
 
     return CommitRules(

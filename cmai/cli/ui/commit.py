@@ -30,7 +30,6 @@ def display_generation_result(
     *,
     regenerated: bool = False,
 ) -> None:
-    click.echo()
     label = "Regenerated commit message" if regenerated else "Commit message"
     click.echo(click.style(f"{label}: {content}", fg="green"))
     click.echo(click.style(f"Tokens used: {token_usage}", fg="blue"))

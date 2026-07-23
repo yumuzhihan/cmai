@@ -90,6 +90,12 @@ class OpenAIProvider(BaseAIClient):
                             self.logger.info(
                                 "Detected reasoning content...\nPlease wait..."
                             )
+                            # The status message is logged to stderr while
+                            # streamed tokens are written to stdout. Emit an
+                            # explicit separator on the stream so the first
+                            # reasoning token cannot be appended to the status
+                            # line.
+                            self.stream_logger.info("\n")
                         is_reasoning = True
                     if not silent:
                         self.stream_logger.info(getattr(delta, "reasoning_content", ""))
@@ -97,7 +103,7 @@ class OpenAIProvider(BaseAIClient):
                 else:
                     if not is_answering:
                         if not silent:
-                            self.stream_logger.info("\n")
+                            self.stream_logger.info("\n\n")
                         self.logger.debug("Starting to answer...")
                         is_answering = True
                     if not silent:
@@ -114,6 +120,9 @@ class OpenAIProvider(BaseAIClient):
             usage = 0
 
         if not silent:
+            # Finish streamed output before emitting the next, non-streaming
+            # status message.
+            self.stream_logger.info("\n\n")
             self.logger.info(f"Final normalized commit message: {response.strip()}")
         else:
             self.logger.debug(

@@ -12,9 +12,12 @@ class OllamaProvider(BaseAIClient):
     ) -> None:
         super().__init__(api_key, model, **kwargs)
 
-        host = "http://localhost:11434"
-        if settings.OLLAMA_HOST:
-            host = settings.OLLAMA_HOST
+        host = (
+            kwargs.pop("host", None)
+            or settings.OLLAMA_HOST
+            or settings.API_BASE
+            or "http://localhost:11434"
+        )
 
         if not self.model:
             self.model = "qwen3:8b"
@@ -143,6 +146,10 @@ class OllamaProvider(BaseAIClient):
                                     self.logger.info(
                                         "Detected reasoning content...\nPlease wait..."
                                     )
+                                    # The prompt and streamed content use
+                                    # different output streams; add an explicit
+                                    # boundary before the first token.
+                                    self.stream_logger.info("\n")
                                 is_reasoning = True
                             # 只输出新的思考内容（避免重复）
                             if not silent:
@@ -153,7 +160,7 @@ class OllamaProvider(BaseAIClient):
                         if answer_content and chunk_is_answering:
                             if not is_answering:
                                 if not silent:
-                                    self.stream_logger.info("\n")
+                                    self.stream_logger.info("\n\n")
                                 self.logger.debug("Starting to answer...")
                                 is_answering = True
                             if not silent:
@@ -164,7 +171,7 @@ class OllamaProvider(BaseAIClient):
                         if not chunk_is_reasoning and not chunk_is_answering:
                             if not is_answering:
                                 if not silent:
-                                    self.stream_logger.info("\n")
+                                    self.stream_logger.info("\n\n")
                                 self.logger.debug("Starting to answer...")
                                 is_answering = True
                                 continue
@@ -215,6 +222,7 @@ class OllamaProvider(BaseAIClient):
 
         final_response = response.strip()
         if not silent:
+            self.stream_logger.info("\n\n")
             self.logger.info(f"Final normalized commit message: {final_response}")
         else:
             self.logger.debug(

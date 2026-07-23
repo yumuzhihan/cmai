@@ -26,7 +26,10 @@ from cmai.providers.base import AIResponse
 from cmai.utils.git_staged_analyzer import GitStagedAnalyzer
 
 
-logger = LoggerFactory().get_logger("CMAI")
+def _get_logger():
+    """Create the persistent logger only when commit generation actually runs."""
+
+    return LoggerFactory().get_logger("CMAI")
 
 
 async def normalize_commit_async(
@@ -39,6 +42,7 @@ async def normalize_commit_async(
     additional_prompt: Optional[str] = None,
     use_file_summary_for_large_diff: Optional[bool] = None,
 ) -> AIResponse:
+    logger = _get_logger()
     if config:
         settings.load_from_env(config)
 
@@ -89,6 +93,7 @@ class CommitSession:
         content = result.content
 
         rules = resolve_commit_rules(settings)
+        click.echo()
         display_generation_result(
             content=content,
             token_usage=result.tokens_used,
@@ -126,6 +131,7 @@ class CommitSession:
                     use_file_summary_for_large_diff=use_file_summary_for_large_diff,
                 )
                 content = result.content
+                click.echo()
                 display_generation_result(
                     content=content,
                     token_usage=result.tokens_used,

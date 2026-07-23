@@ -119,6 +119,9 @@ class AnthropicProvider(BaseAIClient):
             self.logger.warning("No usage information received")
 
         if not silent:
+            # Separate the final streamed token from the status message and
+            # the session output that follows it.
+            self.stream_logger.info("\n\n")
             self.logger.info(f"Final normalized commit message: {response.strip()}")
         else:
             self.logger.debug(

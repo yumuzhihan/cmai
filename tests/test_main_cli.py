@@ -19,11 +19,11 @@ def _patch_staged_state(monkeypatch, is_truncated: bool = False):
     ]
 
     monkeypatch.setattr(
-        "cmai.main.GitStagedAnalyzer.get_staged_entries",
+        "cmai.cli.session.GitStagedAnalyzer.get_staged_entries",
         lambda self: entries,
     )
     monkeypatch.setattr(
-        "cmai.main.GitStagedAnalyzer.render_prompt_entries",
+        "cmai.cli.session.GitStagedAnalyzer.render_prompt_entries",
         lambda self, in_entries: (["ctx"], is_truncated),
     )
 
@@ -37,8 +37,8 @@ def test_strict_mode_hides_commit_option_when_invalid(monkeypatch):
             tokens_used=10,
         )
 
-    monkeypatch.setattr("cmai.main.normalize_commit_async", fake_normalize)
-    monkeypatch.setattr("cmai.main.settings.COMMIT_STRICT", True)
+    monkeypatch.setattr("cmai.cli.session.normalize_commit_async", fake_normalize)
+    monkeypatch.setattr("cmai.cli.session.settings.COMMIT_STRICT", True)
     _patch_staged_state(monkeypatch, is_truncated=False)
 
     runner = CliRunner()
@@ -70,13 +70,14 @@ def test_regenerate_then_commit_when_message_becomes_valid(monkeypatch):
 
     commit_calls = []
 
-    def fake_subprocess_run(cmd, check=True):
+    def fake_subprocess_run(cmd, check=True, cwd=None):
+        del cwd
         commit_calls.append(cmd)
         return subprocess.CompletedProcess(args=cmd, returncode=0)
 
-    monkeypatch.setattr("cmai.main.normalize_commit_async", fake_normalize)
-    monkeypatch.setattr("cmai.main.subprocess.run", fake_subprocess_run)
-    monkeypatch.setattr("cmai.main.settings.COMMIT_STRICT", True)
+    monkeypatch.setattr("cmai.cli.session.normalize_commit_async", fake_normalize)
+    monkeypatch.setattr("cmai.cli.session.subprocess.run", fake_subprocess_run)
+    monkeypatch.setattr("cmai.cli.session.settings.COMMIT_STRICT", True)
     _patch_staged_state(monkeypatch, is_truncated=False)
 
     runner = CliRunner()
@@ -101,13 +102,14 @@ def test_shows_split_suggestion_but_keeps_flow(monkeypatch):
 
     commit_calls = []
 
-    def fake_subprocess_run(cmd, check=True):
+    def fake_subprocess_run(cmd, check=True, cwd=None):
+        del cwd
         commit_calls.append(cmd)
         return subprocess.CompletedProcess(args=cmd, returncode=0)
 
-    monkeypatch.setattr("cmai.main.normalize_commit_async", fake_normalize)
-    monkeypatch.setattr("cmai.main.subprocess.run", fake_subprocess_run)
-    monkeypatch.setattr("cmai.main.settings.COMMIT_STRICT", False)
+    monkeypatch.setattr("cmai.cli.session.normalize_commit_async", fake_normalize)
+    monkeypatch.setattr("cmai.cli.session.subprocess.run", fake_subprocess_run)
+    monkeypatch.setattr("cmai.cli.session.settings.COMMIT_STRICT", False)
     _patch_staged_state(monkeypatch, is_truncated=False)
 
     runner = CliRunner()
@@ -136,13 +138,14 @@ def test_large_diff_prompts_mode_and_passes_choice(monkeypatch):
 
     commit_calls = []
 
-    def fake_subprocess_run(cmd, check=True):
+    def fake_subprocess_run(cmd, check=True, cwd=None):
+        del cwd
         commit_calls.append(cmd)
         return subprocess.CompletedProcess(args=cmd, returncode=0)
 
-    monkeypatch.setattr("cmai.main.normalize_commit_async", fake_normalize)
-    monkeypatch.setattr("cmai.main.subprocess.run", fake_subprocess_run)
-    monkeypatch.setattr("cmai.main.settings.COMMIT_STRICT", False)
+    monkeypatch.setattr("cmai.cli.session.normalize_commit_async", fake_normalize)
+    monkeypatch.setattr("cmai.cli.session.subprocess.run", fake_subprocess_run)
+    monkeypatch.setattr("cmai.cli.session.settings.COMMIT_STRICT", False)
     _patch_staged_state(monkeypatch, is_truncated=True)
 
     runner = CliRunner()

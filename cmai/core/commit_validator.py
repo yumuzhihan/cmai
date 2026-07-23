@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 from cmai.core.commit_spec import CommitRules
 
-
 HEADER_PATTERN = re.compile(
     r"^(?P<type>[a-z]+)(?:\((?P<scope>[^()\r\n]+)\))?(?P<bang>!)?: (?P<subject>.+)$"
 )

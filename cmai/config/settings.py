@@ -1,13 +1,93 @@
-from typing import Any, Optional, get_args, get_origin
-from pathlib import Path
+"""Application settings and prompt-template compatibility helpers."""
 
-from pydantic_settings import BaseSettings
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Optional
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_SETTINGS_PATH = Path.home() / ".config" / "cmai" / "settings.env"
+
+PROMPT_TEMPLATE_VARIABLES = ("{user_input}", "{diff_content}", "{language}")
+LEGACY_PROMPT_TEMPLATE_VARIABLES = {
+    "{{user_input}}": "{user_input}",
+    "{{diff_content}}": "{diff_content}",
+    "{{language}}": "{language}",
+}
+
+DEFAULT_PROMPT_TEMPLATE = (
+    "You are a strict Git commit message generator. Generate exactly one commit "
+    "message based on the user's intent and staged changes.\n"
+    "User intent: {user_input}\n"
+    "Staged changes: {diff_content}\n"
+    "Output language: {language}\n"
+    "You must follow the commit specification rules provided later. If there is any "
+    "conflict, those rules take highest priority.\n"
+    "Return only the final commit message text. Do not add explanations, code fences, "
+    "prefixes, suffixes, or multiple lines.\n"
+)
+
+
+def decode_prompt_template(value: object) -> str:
+    """Decode the one-line JSON representation used in ``settings.env``.
+
+    Older configuration files stored a plain value, so a non-JSON string is left
+    untouched.  This deliberately does not normalize old double-brace variables:
+    callers can detect and migrate them with a user-visible prompt.
+    """
+
+    if not isinstance(value, str):
+        return str(value)
+
+    candidate = value.strip()
+    if not candidate:
+        return value
+
+    try:
+        decoded = json.loads(candidate)
+    except (TypeError, ValueError):
+        return value
+
+    return decoded if isinstance(decoded, str) else value
+
+
+def encode_prompt_template(value: str) -> str:
+    """Return a reversible, single-line representation suitable for dotenv."""
+
+    return json.dumps(value, ensure_ascii=False)
+
+
+def normalize_prompt_template_variables(value: str) -> str:
+    """Make legacy ``{{variable}}`` templates usable by the current renderer."""
+
+    normalized = value
+    for legacy, current in LEGACY_PROMPT_TEMPLATE_VARIABLES.items():
+        normalized = normalized.replace(legacy, current)
+    return normalized
+
+
+def has_legacy_prompt_template_variables(value: str) -> bool:
+    return any(variable in value for variable in LEGACY_PROMPT_TEMPLATE_VARIABLES)
+
+
+def has_required_prompt_template_variables(value: str) -> bool:
+    normalized = normalize_prompt_template_variables(value)
+    return all(variable in normalized for variable in PROMPT_TEMPLATE_VARIABLES)
 
 
 class Settings(BaseSettings):
-    """
-    Settings class for application configuration.
-    """
+    """Settings loaded from environment variables and the optional global dotenv."""
+
+    model_config = SettingsConfigDict(
+        env_file=str(DEFAULT_SETTINGS_PATH),
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        use_enum_values=True,
+        extra="ignore",
+    )
 
     LOG_FILE_PATH: Optional[str] = None
     LOG_LEVEL: str = "DEBUG"
@@ -37,14 +117,7 @@ class Settings(BaseSettings):
     COMMIT_SUBJECT_CASE: str = "lower"
     COMMIT_ALLOW_BANG: bool = True
 
-    PROMPT_TEMPLATE: str = (
-        "You are a strict Git commit message generator. Generate exactly one commit message based on the user's intent and staged changes.\n"
-        + "User intent: {{user_input}}\n"
-        + "Staged changes: {{diff_content}}\n"
-        + "Output language: {{language}}\n"
-        + "You must follow the commit specification rules provided later. If there is any conflict, those rules take highest priority.\n"
-        + "Return only the final commit message text. Do not add explanations, code fences, prefixes, suffixes, or multiple lines.\n"
-    )
+    PROMPT_TEMPLATE: str = DEFAULT_PROMPT_TEMPLATE
 
     MAX_DIFF_LENGTH: int = 8000
     MAX_DIFF_FILE_LINES: int = 50
@@ -56,58 +129,29 @@ class Settings(BaseSettings):
     RETRY_BASE_DELAY_SECONDS: float = 2.0
     RETRY_MAX_DELAY_SECONDS: float = 30.0
 
-    class Config:
-        """
-        Configuration for Pydantic settings.
-        """
+    @field_validator("PROMPT_TEMPLATE", mode="before")
+    @classmethod
+    def _decode_prompt_template(cls, value: object) -> str:
+        return decode_prompt_template(value)
 
-        env_file = str(Path.home() / ".config" / "cmai" / "settings.env")
-        if not Path(env_file).exists():
-            Path(env_file).parent.mkdir(parents=True, exist_ok=True)
-            Path(env_file).touch()
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        use_enum_values = True
-        extra = "ignore"
+    @classmethod
+    def from_env_file(cls, env_file: str | Path | None = None) -> "Settings":
+        """Load settings from a path without ever creating that path."""
 
-    def load_from_env(self, env_file: Optional[str] = None):
-        if env_file:
-            self.Config.env_file = env_file
-        self._load_env_file()
+        path = DEFAULT_SETTINGS_PATH if env_file is None else Path(env_file)
+        # Pylance synthesizes a field-only Pydantic constructor, while
+        # BaseSettings also accepts this runtime-only configuration argument.
+        return cls(_env_file=str(path))  # pyright: ignore[reportCallIssue]
 
-    def _parse_value(self, key: str, raw_value: str) -> Any:
-        field = self.__class__.model_fields.get(key)
-        if field is None:
-            return raw_value
+    def load_from_env(self, env_file: str | Path | None = None) -> None:
+        """Reload this shared instance while preserving references held elsewhere."""
 
-        annotation = field.annotation
-        origin = get_origin(annotation)
-        args = get_args(annotation)
-
-        target_type = annotation
-        if origin is not None and type(None) in args:
-            non_none_types = [arg for arg in args if arg is not type(None)]
-            if len(non_none_types) == 1:
-                target_type = non_none_types[0]
-
-        if target_type is bool:
-            return raw_value.lower() in {"1", "true", "yes", "on"}
-        if target_type is int:
-            return int(raw_value)
-        if target_type is float:
-            return float(raw_value)
-
-        return raw_value
-
-    def _load_env_file(self):
-        env_file = Path(self.Config.env_file)
-        if env_file.exists():
-            with env_file.open(encoding=self.Config.env_file_encoding) as f:
-                for line in f:
-                    if line.strip() and not line.startswith("#"):
-                        key, value = line.strip().split("=", 1)
-                        parsed = self._parse_value(key.strip(), value.strip())
-                        setattr(self, key.strip(), parsed)
+        loaded = self.__class__.from_env_file(env_file)
+        for field_name in self.__class__.model_fields:
+            setattr(self, field_name, getattr(loaded, field_name))
+        self.__pydantic_fields_set__ = set(loaded.model_fields_set)
 
 
-settings = Settings()
+# Importing this module is intentionally read-only: the parent directory and
+# settings file are created only by the interactive configuration save path.
+settings = Settings.from_env_file()
